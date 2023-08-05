@@ -4,6 +4,7 @@ import cors from 'cors';
 import db from '../database/connection';
 import userRouter from '../routes/usuario';
 import authRouter from '../routes/auth';
+import productRouter from '../routes/product.router';
 
 
 
@@ -51,6 +52,7 @@ class Server {
         // this.app.use( this.apiPaths.usuarios, userRoutes )
         this.app.use("/api/auth", authRouter)
         this.app.use("/api", userRouter);
+        this.app.use("/api", productRouter);
     }
 
 
