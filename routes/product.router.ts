@@ -7,7 +7,8 @@ import { getProducts, getProductByTicket } from '../controllers/product.controll
 const productRouter = Router();
 
 productRouter.get('/products', getProducts);
-productRouter.get('/product/:eTicket', getProductByTicket);
+productRouter.post('/product', getProductByTicket);
+// productRouter.get('/product/:eTicket', getProductByTicket);
 
 
 

@@ -29,7 +29,8 @@ export const getProducts = async (req: Request, res: Response) => {
 
 export const getProductByTicket = async (req: Request, res: Response) => {
    try {
-      const { eTicket } = req.params;
+      const { eTicket , idUser} = req.body;
+      // const { eTicket } = req.params;
 
       const product: any = await Product.findOne({
          where: {
@@ -68,7 +69,7 @@ export const getProductByTicket = async (req: Request, res: Response) => {
 
       const postCheckIn = {
          idProduct: product.id,
-         idUser: 1,
+         idUser: idUser,
          checkIn: true
       };
 
