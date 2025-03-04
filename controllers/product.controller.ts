@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Product from '../models/productos';
 import CheckinModel from '../models/check-in';
-import { ProductInterface } from '../models/productos';
+import crypto from 'crypto';
 
 import { Op, UUID } from 'sequelize';
 import db from '../database/connection';
@@ -190,7 +190,7 @@ export const insertCheckIn = async (req: Request, res: Response) => {
    try {
       const { name, document, phone, email, idTransaction } = req.body;
 
-      if (!name || !document || !phone || !email) {
+      if (!name || !document || !phone || !email || !idTransaction) {
          return res.status(400).json({
             message: 'Por favor complete todos los campos'
          });
@@ -198,18 +198,23 @@ export const insertCheckIn = async (req: Request, res: Response) => {
 
       const buyer = await Buyer.findOne({
          where: {
-            idTransaction,
-            orderStatus: 0
+            idTransaction
          }
       });
 
       if (!buyer) {
          return res.status(400).json({
-            message: 'El código no existe o ya fue utilizado'
+            message: 'El código no existe'
          });
       }
 
-      // create an uudi
+      if (buyer.orderStatus) {
+         return res.status(400).json({
+            message: 'El código ya fue utilizado'
+         });
+      }
+
+      // create a UUID
       const token = crypto.randomUUID();
 
       const checkin = CheckIn.build({
@@ -223,7 +228,7 @@ export const insertCheckIn = async (req: Request, res: Response) => {
 
       await checkin.save();
 
-      buyer.orderStatus = 1;
+      buyer.orderStatus = true;
       await buyer.save();
 
       return res.status(200).json({

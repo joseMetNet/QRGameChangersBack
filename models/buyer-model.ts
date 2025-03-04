@@ -29,7 +29,7 @@ export class Buyer extends Model {
   declare name: string;
   declare email: string;
   declare originalValue: string;
-  declare orderStatus: number;
+  declare orderStatus: boolean;
   declare paymentMethod: string;
   declare transactionType: string;
   declare transactionStatus: string;
@@ -75,7 +75,7 @@ Buyer.init(
       allowNull: true
     },
     orderStatus: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BOOLEAN,
       allowNull: true
     },
     paymentMethod: {
