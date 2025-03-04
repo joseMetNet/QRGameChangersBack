@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "nodemon dist/app",
     "compile": "tsc && node dist/app.js",
     "start": "tsc && node dist/app.js"
   },
