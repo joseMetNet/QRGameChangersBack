@@ -6,7 +6,7 @@
   "scripts": {
     "test": "nodemon dist/app",
     "compile": "tsc && node dist/app.js",
-    "start": "node app"
+    "start": "tsc && node dist/app.js"
   },
   "keywords": [],
   "author": "",
