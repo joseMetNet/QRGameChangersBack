@@ -236,6 +236,38 @@ export const insertCheckIn = async (req: Request, res: Response) => {
       });
    }
 }
+
+export const findCheckIn = async (req: Request, res: Response) => {
+   try {
+      const { token } = req.query;
+
+      if (!token) {
+         return res.status(400).json({
+            message: 'Por favor envie el token'
+         });
+      }
+
+      const checkin = await CheckIn.findOne({
+         where: { token }
+      });
+
+      if (!checkin) {
+         return res.status(400).json({
+            message: 'El código no existe o ya fue utilizado'
+         });
+      }
+
+      return res.status(200).json({
+         checkin
+      });
+   } catch (error) {
+      console.log('error: ', error);
+      return res.status(500).json({
+         message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+      });
+   }
+}
+
 const buildEmailBody = (code: string) => {
    const body: string =
       `
@@ -257,7 +289,6 @@ const buildEmailBody = (code: string) => {
      `;
    return body;
 }
-
 
 interface BuyerRequest {
    idTransaction: string;
