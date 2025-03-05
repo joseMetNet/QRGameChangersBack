@@ -93,8 +93,8 @@ export const getProductByTicket = async (req: Request, res: Response) => {
 };
 
 export const insertBuyer = async (req: Request, res: Response) => {
-   const transaction = await db.transaction();
    try {
+      const transaction = await db.transaction();
       const request: BuyerRequest[] = Array.isArray(req.body) ? req.body : [];
 
       if (request.length === 0) {
@@ -104,21 +104,19 @@ export const insertBuyer = async (req: Request, res: Response) => {
          });
       }
 
-      const newBuyers = [];
-      for (const buyer of request) {
-         const buyerExist = await Buyer.findOne({
-            where: {
-               idTransaction: buyer.idTransaction
-            },
-            transaction
-         });
-         if (!buyerExist) {
-            newBuyers.push({
-               ...buyer,
-               orderStatus: 0
-            });
-         }
-      }
+      const idTransactions = request.map(buyer => buyer.idTransaction);
+      const existingBuyers = await Buyer.findAll({
+         where: {
+            idTransaction: {
+               [Op.in]: idTransactions
+            }
+         },
+         transaction
+      });
+
+      const existingTransactions = new Set(existingBuyers.map(buyer => buyer.idTransaction));
+      const newBuyers = request.filter(buyer => !existingTransactions.has(buyer.idTransaction))
+         .map(buyer => ({ ...buyer, orderStatus: 0 }));
 
       if (newBuyers.length === 0) {
          console.log('No new buyers to insert');
@@ -127,29 +125,26 @@ export const insertBuyer = async (req: Request, res: Response) => {
          });
       }
 
-      if (newBuyers.length > 0) {
-         console.log('Inserting new buyers:', newBuyers);
-         await Buyer.bulkCreate(newBuyers, { transaction });
+      await Buyer.bulkCreate(newBuyers, { transaction });
 
-         for (const buyer of newBuyers) {
-            //const emailBody = await sendVerificationEmail(buyer.idTransaction, buyer.email);
-            //console.log("Email has been sent to:", buyer.email);
-            //if (!emailBody) {
-            //   await transaction.rollback();
-            //   return res.status(500).json({
-            //      message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
-            //   });
-            //}
-         }
-      }
+      // Uncomment and implement email sending logic if needed
+      // for (const buyer of newBuyers) {
+      //    const emailBody = await sendVerificationEmail(buyer.idTransaction, buyer.email);
+      //    console.log("Email has been sent to:", buyer.email);
+      //    if (!emailBody) {
+      //       await transaction.rollback();
+      //       return res.status(500).json({
+      //          message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+      //       });
+      //    }
+      // }
 
       await transaction.commit();
       return res.status(200).json({
          message: 'Compradores insertados correctamente'
       });
    } catch (error) {
-      await transaction.rollback();
-      console.log('Transaction rolled back due to error:', error);
+      console.log('Connection error: ', error);
       return res.status(500).json({
          message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
       });

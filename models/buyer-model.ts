@@ -24,6 +24,8 @@ export class Buyer extends Model {
   declare idBuyer: number;
   declare idTransaction: string;
   declare idOrder: string;
+  declare createdAt: string;
+  declare lastUpdated: string;
   declare reference: string;
   declare description: string;
   declare name: string;
@@ -52,6 +54,14 @@ Buyer.init(
     },
     idOrder: {
       type: DataTypes.STRING(64),
+      allowNull: true
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    lastUpdated: {
+      type: DataTypes.DATE,
       allowNull: true
     },
     reference: {
