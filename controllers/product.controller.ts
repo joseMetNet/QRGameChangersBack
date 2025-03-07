@@ -93,8 +93,8 @@ export const getProductByTicket = async (req: Request, res: Response) => {
 };
 
 export const insertBuyer = async (req: Request, res: Response) => {
+   const transaction = await db.transaction();
    try {
-      const transaction = await db.transaction();
       const request: BuyerRequest[] = Array.isArray(req.body) ? req.body : [];
 
       if (request.length === 0) {
@@ -127,23 +127,25 @@ export const insertBuyer = async (req: Request, res: Response) => {
 
       await Buyer.bulkCreate(newBuyers, { transaction });
 
-      // Uncomment and implement email sending logic if needed
-      // for (const buyer of newBuyers) {
-      //    const emailBody = await sendVerificationEmail(buyer.idTransaction, buyer.email);
-      //    console.log("Email has been sent to:", buyer.email);
-      //    if (!emailBody) {
-      //       await transaction.rollback();
-      //       return res.status(500).json({
-      //          message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
-      //       });
-      //    }
-      // }
+      for (const buyer of newBuyers) {
+         const emailBody = await sendVerificationEmail(buyer.idTransaction, buyer.email);
+         console.log("Email has been sent to:", buyer.email);
+         if (!emailBody) {
+            await transaction.rollback();
+            return res.status(500).json({
+               message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+            });
+         }
+      }
 
       await transaction.commit();
       return res.status(200).json({
          message: 'Compradores insertados correctamente'
       });
    } catch (error) {
+      if (transaction) {
+         await transaction.rollback();
+      }
       console.log('Connection error: ', error);
       return res.status(500).json({
          message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
@@ -153,33 +155,37 @@ export const insertBuyer = async (req: Request, res: Response) => {
 
 export const sendVerificationEmail = async (code: string, email: string) => {
    try {
-
       const emailBody: string = buildEmailBody(code);
       const host: string = 'https://api.masiv.masivian.com/email/v1/delivery';
       const options = {
          method: 'POST',
          headers: {
             'Content-Type': 'application/json',
-            Authorization: 'Basic R2V0aW5jbG91ZC1NZXRuZXQuQXBpOjBrMmxnMkdFNlRYSA=='
+            Authorization: 'Basic YXBpLnNpZm1hOlhWSTN5NkhHR1EySHk2djhFUHRv'
          },
-         body: `{
-                     "Subject":"Activaci\u00F3n de cuenta",
-                     "From":"Hone Solutions<gestiondocumental@honesolutions.com.co>",
-                     "Template": {
-                         "Type":"text/html",
-                         "Value": "${emailBody}"
-                     },
-                     "Recipients":[{"To":"Efrain Palacios<${email}>"}]
-                }`
+         body: JSON.stringify({
+            Subject: "Activación de cuenta",
+            From: "🎟 ¡Tu acceso al concierto de Kris R está listo<noreply@lamejornochedetuvida.com>",
+            Template: {
+               Type: "text/html",
+               Value: emailBody
+            },
+            Recipients: [{ To: `Efrain Palacios<${email}>` }]
+         })
       };
       const request = await fetch(host, options);
+      const responseBody = await request.json();
       if (!request.ok) {
-         return { status: false, message: 'Error sending email' };
+         console.log('Error sending email to:', email);
+         console.log('Response body:', responseBody);
+         return null;
       }
       return emailBody;
    } catch (err: any) {
+      console.log('Error sending email:', err);
+      return null;
    }
-}
+};
 
 export const insertCheckIn = async (req: Request, res: Response) => {
    try {
@@ -268,27 +274,77 @@ export const findCheckIn = async (req: Request, res: Response) => {
    }
 }
 
-const buildEmailBody = (code: string) => {
-   const body: string =
-      `
-     <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
- <html xmlns='http://www.w3.org/1999/xhtml'>
+const buildEmailBody = (idTransaction: string) => {
+   const body: string = `
+   <!DOCTYPE html>
+   <html>
    <head>
-     <meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
-     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-     <title>Verify your login</title>
+       <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Concierto Kris R</title>
+       <style>
+           body {
+               font-family: Arial, sans-serif;
+               margin: 0;
+               padding: 0;
+               background-color: #f4f4f4;
+           }
+           .container {
+               max-width: 600px;
+               margin: 0 auto;
+               background: #ffffff;
+               padding: 20px;
+               text-align: center;
+           }
+           .banner {
+               width: 100%;
+               height: auto;
+           }
+           .button {
+               display: inline-block;
+               background-color: red;
+               color: white;
+               padding: 10px 20px;
+               font-size: 16px;
+               text-decoration: none;
+               border-radius: 5px;
+               margin: 15px 0;
+           }
+           .footer {
+               font-size: 14px;
+               color: #555;
+           }
+       </style>
    </head>
-   <body style='font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;'>
-         <p style='padding-bottom: 16px'>
-           <a href="http://localhost:8000/checkin/${code}">Verify Account</a>
-         </p>
-       </tbody>
-     </table>
+   <body>
+       <div class="container">
+           <p>Si no puedes ver correctamente el contenido de este mensaje, haz <a href="https://yourqrpass.com/#/checkIn?${idTransaction}">clic aquí</a>.</p>
+           <a href="#">
+               <img src="https://sacmaback.blob.core.windows.net/order/panel.jpg" alt="Concierto Kris R" class="banner">
+           </a>
+           <p>
+               ¡Gracias por tu compra para el concierto de Kris R! 🎤✨
+           </p>
+           <p>
+               Para registrar la información de la persona que asistirá al evento, por favor completa el siguiente formulario en el siguiente enlace:
+           </p>
+           <a href="https://yourqrpass.com/#/checkIn?x_client=${idTransaction}" class="button">Regístrate</a>
+           <p class="footer">
+               Una vez completado el registro, recibirás un correo con tu código QR, el cual será tu acceso al evento. Recuerda que este código solo podrá usarse una vez.<br>
+               Si tienes alguna duda o inquietud, no dudes en contactarnos.<br>
+               ¡Nos vemos en el concierto! 🎶🔥
+           </p>
+           <p>
+               <strong>Equipo de Kris R</strong><br>
+               <a href="https://wa.me/3046550971" style="color: #25D366; text-decoration: none; font-size: 16px;">
+                   📱 WhatsApp: 304 655 0971
+               </a>
+           </p>
+       </div>
    </body>
- </html>
-     `;
+   </html>`;
    return body;
-}
+};
 
 interface BuyerRequest {
    idTransaction: string;
