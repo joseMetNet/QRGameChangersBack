@@ -92,6 +92,62 @@ export const getProductByTicket = async (req: Request, res: Response) => {
    }
 };
 
+// the same function getProductByTicker but user for the buyer,
+// this function is used to verify the buyer, change the status of the check-in
+// and return all information
+export const getProductByTicketBuyer = async (req: Request, res: Response) => {
+   try {
+      const { eTicket} = req.body;
+
+      const checkIn: any = await CheckIn.findOne({
+         where: {
+            eTicket
+         }
+      });
+
+      if (!checkIn) {
+         return res.status(400).json({
+            message: `Lo sentimos, este código no existe.`,
+            user: null
+         });
+      }
+
+      const buyer = await Buyer.findOne({
+         where: {
+            idTransaction: checkIn.idTransaction
+         }
+      });
+
+      if (!buyer) {
+         return res.status(400).json({
+            message: `Lo sentimos, este código no existe.`,
+            user: null
+         });
+      }
+
+      const user = {
+         //  id: product.id,
+         buyer_name: buyer.name,
+         participant_phone: buyer.email,
+         register_person: buyer.description,
+         name_product: "ticket"
+      };
+
+      checkIn.used = true;
+      await checkIn.save();
+
+      return res.status(200).json({
+         message: 'Codigó verificado exitosamente',
+         user
+      });
+   } catch (error) {
+      console.log('error: ', error);
+      return res.status(500).json({
+         message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+      });
+   }
+};
+
 export const insertBuyer = async (req: Request, res: Response) => {
    const transaction = await db.transaction();
    try {

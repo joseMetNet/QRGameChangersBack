@@ -7,16 +7,9 @@ import authRouter from '../routes/auth';
 import productRouter from '../routes/product.router';
 import emergencyRouter from '../routes/emergency.router';
 
-
-
 class Server {
-
     private app: Application;
     private port: string;
-    // private apiPaths = {
-    //     usuarios: '/api/usuarios',
-    //     router: '/login'
-    // }
 
     constructor() {
         this.app  = express();
@@ -40,30 +33,29 @@ class Server {
 
     middlewares() {
         // CORS
-        this.app.use( cors() );
+        this.app.use(cors({
+            origin: '*',
+            methods: ['GET', 'POST', 'PUT', 'DELETE'],
+            allowedHeaders: ['Content-Type', 'Authorization']
+        }));
         // Lectura del body
-        this.app.use( express.json() );
+        this.app.use(express.json());
         // Carpeta pública
-        this.app.use( express.static('public') );
+        this.app.use(express.static('public'));
     }
 
-
     routes() {
-        // this.app.use(this.apiPaths.router, authRoutes);
-        // this.app.use( this.apiPaths.usuarios, userRoutes )
         this.app.use("/api/auth", authRouter)
         this.app.use("/api", userRouter);
         this.app.use("/api", productRouter);
         this.app.use("/api", emergencyRouter);
     }
 
-
     listen() {
-        this.app.listen( this.port, () => {
+        this.app.listen(this.port, () => {
             console.log('Servidor corriendo en puerto ' + this.port );
         })
     }
-
 }
 
 export default Server;
