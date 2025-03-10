@@ -1,8 +1,17 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import db from '../database/connection';
 
-const CheckIn = db.define(
-  'TB_CheckIn',
+export class CheckIn extends Model {
+  declare idCheckIn: number;
+  declare name: string;
+  declare document: string;
+  declare phone: string;
+  declare email: string;
+  declare used: boolean;
+  declare token: string;
+}
+
+CheckIn.init(
   {
     idCheckIn: {
       type: DataTypes.INTEGER,
@@ -35,9 +44,9 @@ const CheckIn = db.define(
     }
   },
   {
+    sequelize: db,
+    modelName: 'TB_CheckIn',
     timestamps: false,
     freezeTableName: true
   }
 );
-
-export default CheckIn;

@@ -5,8 +5,8 @@ import crypto from 'crypto';
 
 import { Op, UUID } from 'sequelize';
 import db from '../database/connection';
-import CheckIn from "../models/checkin-model";
 import { Buyer } from "../models/buyer-model";
+import { CheckIn } from "../models/checkin-model";
 
 export const getProducts = async (req: Request, res: Response) => {
    try {
@@ -112,24 +112,11 @@ export const getProductByTicketBuyer = async (req: Request, res: Response) => {
          });
       }
 
-      const buyer = await Buyer.findOne({
-         where: {
-            idTransaction: checkIn.idTransaction
-         }
-      });
-
-      if (!buyer) {
-         return res.status(400).json({
-            message: `Lo sentimos, este código no existe.`,
-            user: null
-         });
-      }
-
       const user = {
          //  id: product.id,
-         buyer_name: buyer.name,
-         participant_phone: buyer.email,
-         register_person: buyer.description,
+         buyer_name: checkIn.name,
+         participant_phone: checkIn.email,
+         register_person: "test",
          name_product: "ticket"
       };
 
