@@ -101,7 +101,7 @@ export const getProductByTicketBuyer = async (req: Request, res: Response) => {
 
       const checkIn: any = await CheckIn.findOne({
          where: {
-            eTicket
+            token: eTicket
          }
       });
 
