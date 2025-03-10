@@ -113,12 +113,18 @@ export const getProductByTicketBuyer = async (req: Request, res: Response) => {
       }
 
       const user = {
-         //  id: product.id,
          buyer_name: checkIn.name,
          participant_phone: checkIn.email,
          register_person: "test",
          name_product: "ticket"
       };
+
+      if(checkIn.used) {
+         return res.status(400).json({
+            message: `El usuario ya ingresó`,
+            user: null
+         });
+      }
 
       checkIn.used = true;
       await checkIn.save();
