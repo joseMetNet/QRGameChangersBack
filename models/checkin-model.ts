@@ -4,6 +4,7 @@ import db from '../database/connection';
 export class CheckIn extends Model {
   declare idCheckIn: number;
   declare name: string;
+  declare description: string;
   declare document: string;
   declare phone: string;
   declare email: string;
@@ -19,6 +20,10 @@ CheckIn.init(
       autoIncrement: true
     },
     name: {
+      type: DataTypes.STRING(128),
+      allowNull: true
+    },
+    description: {
       type: DataTypes.STRING(128),
       allowNull: true
     },

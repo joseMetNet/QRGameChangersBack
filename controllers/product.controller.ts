@@ -266,6 +266,7 @@ export const insertCheckIn = async (req: Request, res: Response) => {
          document,
          phone,
          email,
+         description: buyer.description ?? '',
          used: false,
          token
       });
