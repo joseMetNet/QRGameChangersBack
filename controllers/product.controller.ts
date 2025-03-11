@@ -402,7 +402,7 @@ const buildQrEmailBody = (token: string, name: string) => {
            <p><strong>📢 Tu acceso al concierto de Kris R está listo! Hola ${name},</strong></p>
            <p>¡Tu registro para el concierto de Kris R se ha completado con éxito! 🎶✨</p>
            <p>Para ingresar al evento, por favor presenta tu código QR en la entrada. Puedes verlo y mostrarlo en el siguiente enlace:</p>
-           <p>🔗 <a href=https://yourqrpass.com/#/qr?token=${token}" class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
+           <p>🔗 <a href=https://yourqrpass.com/#/qr?token=${token} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
            <p>⚠️ <span class="important">Importante:</span> Este código es válido solo una vez. No lo compartas con otras personas.</p>
            <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
            <p>¡Nos vemos en el concierto! 🎤🔥</p>
