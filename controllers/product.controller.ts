@@ -92,9 +92,6 @@ export const getProductByTicket = async (req: Request, res: Response) => {
    }
 };
 
-// the same function getProductByTicker but user for the buyer,
-// this function is used to verify the buyer, change the status of the check-in
-// and return all information
 export const getProductByTicketBuyer = async (req: Request, res: Response) => {
    try {
       const { eTicket} = req.body;
@@ -236,6 +233,41 @@ export const sendVerificationEmail = async (code: string, email: string) => {
    }
 };
 
+export const sendCheckInEmail = async (token: string, email: string, name: string) => {
+   try {
+      const emailBody: string = buildQrEmailBody(token, name);
+      const host: string = 'https://api.masiv.masivian.com/email/v1/delivery';
+      const options = {
+         method: 'POST',
+         headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Basic YXBpLnNpZm1hOlhWSTN5NkhHR1EySHk2djhFUHRv'
+         },
+         body: JSON.stringify({
+            Subject: "🎟 ¡Tu acceso al concierto de Kris R está listo",
+            From: "<noreply@lamejornochedetuvida.com>",
+            Template: {
+               Type: "text/html",
+               Value: emailBody
+            },
+            Recipients: [{ To: `Efrain Palacios<${email}>` }]
+         })
+      };
+      const request = await fetch(host, options);
+      const responseBody = await request.json();
+      if (!request.ok) {
+         console.log('Error sending email to:', email);
+         console.log('Response body:', responseBody);
+         return null;
+      }
+      return emailBody;
+   }
+   catch (err: any) {
+      console.log('Error sending email:', err);
+      return null;
+   }
+}
+
 export const insertCheckIn = async (req: Request, res: Response) => {
    try {
       const { name, document, phone, email, idTransaction } = req.body;
@@ -282,6 +314,8 @@ export const insertCheckIn = async (req: Request, res: Response) => {
       buyer.orderStatus = true;
       await buyer.save();
 
+      await sendCheckInEmail(token, email, name);
+
       return res.status(200).json({
          checkin
       });
@@ -323,6 +357,63 @@ export const findCheckIn = async (req: Request, res: Response) => {
       });
    }
 }
+
+const buildQrEmailBody = (token: string, name: string) => {
+   const body: string = `
+   <!DOCTYPE html>
+   <html>
+   <head>
+       <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Tu acceso al concierto de Kris R</title>
+       <style>
+           body {
+               font-family: Arial, sans-serif;
+               margin: 0;
+               padding: 20px;
+               background-color: #ffffff;
+           }
+           .container {
+               max-width: 600px;
+               margin: 0 auto;
+               background: #ffffff;
+               padding: 20px;
+               text-align: left;
+           }
+           .highlight {
+               font-weight: bold;
+               color: #000;
+           }
+           .important {
+               font-weight: bold;
+               color: #d9534f;
+           }
+           .qr-link {
+               display: block;
+               font-weight: bold;
+               color: #007bff;
+               text-decoration: none;
+               margin: 15px 0;
+           }
+       </style>
+   </head>
+   <body>
+       <div class="container">
+           <p><strong>📢 Tu acceso al concierto de Kris R está listo! Hola ${name},</strong></p>
+           <p>¡Tu registro para el concierto de Kris R se ha completado con éxito! 🎶✨</p>
+           <p>Para ingresar al evento, por favor presenta tu código QR en la entrada. Puedes verlo y mostrarlo en el siguiente enlace:</p>
+           <p>🔗 <a href=https://yourqrpass.com/#/qr?token=${token}" class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
+           <p>⚠️ <span class="important">Importante:</span> Este código es válido solo una vez. No lo compartas con otras personas.</p>
+           <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
+           <p>¡Nos vemos en el concierto! 🎤🔥</p>
+           <p><strong>Equipo de Kris R</strong><br>
+           Cel: 304 655-0971</p>
+       </div>
+   </body>
+   </html>`;
+   return body;
+};
+
 
 const buildEmailBody = (idTransaction: string) => {
    const body: string = `
