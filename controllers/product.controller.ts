@@ -111,9 +111,9 @@ export const getProductByTicketBuyer = async (req: Request, res: Response) => {
 
       const user = {
          buyer_name: checkIn.name,
-         participant_phone: checkIn.email,
-         register_person: "test",
-         name_product: "ticket"
+         participant_phone: checkIn.phone,
+         register_person: checkIn.document,
+         name_product: checkIn.description
       };
 
       if(checkIn.used) {
