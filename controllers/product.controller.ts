@@ -207,7 +207,7 @@ export const sendVerificationEmail = async (code: string, email: string) => {
          method: 'POST',
          headers: {
             'Content-Type': 'application/json',
-            Authorization: 'Basic YXBpLnNpZm1hOlhWSTN5NkhHR1EySHk2djhFUHRv'
+            Authorization: 'Basic R2V0aW5jbG91ZC1NZXRuZXQuQXBpOjBrMmxnMkdFNlRYSA=='
          },
          body: JSON.stringify({
             Subject: "Activación de cuenta",
@@ -241,11 +241,11 @@ export const sendCheckInEmail = async (token: string, email: string, name: strin
          method: 'POST',
          headers: {
             'Content-Type': 'application/json',
-            Authorization: 'Basic YXBpLnNpZm1hOlhWSTN5NkhHR1EySHk2djhFUHRv'
+            Authorization: 'Basic R2V0aW5jbG91ZC1NZXRuZXQuQXBpOjBrMmxnMkdFNlRYSA=='
          },
          body: JSON.stringify({
             Subject: "🎟 ¡Tu acceso al concierto de Kris R está listo",
-            From: "<noreply@lamejornochedetuvida.com>",
+            From: "<informacion@yourqrpass.com>",
             Template: {
                Type: "text/html",
                Value: emailBody
@@ -271,7 +271,11 @@ export const sendCheckInEmail = async (token: string, email: string, name: strin
 export const insertCheckIn = async (req: Request, res: Response) => {
    try {
       const { name, document, phone, email, idTransaction } = req.body;
-
+      console.log('name: ', name);
+      console.log('document: ', document);
+      console.log('phone: ', phone);
+      console.log('email: ', email);
+      console.log('idTransaction: ', idTransaction);
       if (!name || !document || !phone || !email || !idTransaction) {
          return res.status(400).json({
             message: 'Por favor complete todos los campos'
