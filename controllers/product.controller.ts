@@ -269,7 +269,7 @@ export const sendCheckInEmail = async (token: string, email: string, name: strin
 }
 
 // function to send email checkin to buyer with orderStatus = 0
-export const sendCheckInEmailToBuyer = async (req: Request, res: Response) => {
+export const sendRemainderToCheckIn = async (req: Request, res: Response) => {
    try {
       const buyers = await Buyer.findAll({
          where: {
@@ -284,6 +284,7 @@ export const sendCheckInEmailToBuyer = async (req: Request, res: Response) => {
       }
 
       for (const buyer of buyers) {
+         console.log(`Sending email to: ${buyer.email}`);
          const emailBody = await sendVerificationEmail(buyer.idTransaction, buyer.email);
          console.log("Email has been sent to:", buyer.email);
          if (!emailBody) {

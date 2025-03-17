@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProducts, getProductByTicket, insertBuyer, insertCheckIn, findCheckIn, getProductByTicketBuyer } from '../controllers/product.controller';
+import { getProducts, getProductByTicket, insertBuyer, insertCheckIn, findCheckIn, getProductByTicketBuyer, sendRemainderToCheckIn } from '../controllers/product.controller';
 
 
 
@@ -11,6 +11,7 @@ productRouter.get('/products', getProducts);
 productRouter.post('/product', getProductByTicketBuyer)
 productRouter.post('/buyer', insertBuyer);
 productRouter.post('/check-in', insertCheckIn);
+productRouter.post('/remainder', sendRemainderToCheckIn);
 productRouter.get('/check-in', findCheckIn);
 // productRouter.get('/product/:eTicket', getProductByTicket);
 
