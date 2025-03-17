@@ -211,12 +211,12 @@ export const sendVerificationEmail = async (code: string, email: string) => {
          },
          body: JSON.stringify({
             Subject: "Activación de cuenta",
-            From: "🎟 ¡Tu acceso al concierto de Kris R está listo<noreply@lamejornochedetuvida.com>",
+            From: "🎟 ¡Tu acceso al concierto de Kris R está listo<informacion@yourqrpass.com>",
             Template: {
                Type: "text/html",
                Value: emailBody
             },
-            Recipients: [{ To: `Efrain Palacios<${email}>` }]
+            Recipients: [{ To: `Comprador<${email}>` }]
          })
       };
       const request = await fetch(host, options);
@@ -260,11 +260,47 @@ export const sendCheckInEmail = async (token: string, email: string, name: strin
          console.log('Response body:', responseBody);
          return null;
       }
-      return emailBody;
+      return request.statusText;
    }
    catch (err: any) {
       console.log('Error sending email:', err);
       return null;
+   }
+}
+
+// function to send email checkin to buyer with orderStatus = 0
+export const sendCheckInEmailToBuyer = async (req: Request, res: Response) => {
+   try {
+      const buyers = await Buyer.findAll({
+         where: {
+            orderStatus: 0
+         }
+      });
+
+      if (buyers.length === 0) {
+         return res.status(204).json({
+            message: 'No hay compradores para enviar email'
+         });
+      }
+
+      for (const buyer of buyers) {
+         const emailBody = await sendVerificationEmail(buyer.idTransaction, buyer.email);
+         console.log("Email has been sent to:", buyer.email);
+         if (!emailBody) {
+            return res.status(500).json({
+               message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+            });
+         }
+      }
+
+      return res.status(200).json({
+         message: 'Emails enviados correctamente'
+      });
+   } catch (error) {
+      console.log('error: ', error);
+      return res.status(500).json({
+         message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+      });
    }
 }
 
