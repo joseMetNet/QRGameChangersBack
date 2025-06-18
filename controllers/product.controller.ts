@@ -199,6 +199,79 @@ export const insertBuyer = async (req: Request, res: Response) => {
    }
 };
 
+export const insertBuyerAndProducts = async (req: Request, res: Response) => {
+  const transaction = await db.transaction();
+
+  try {
+    const {
+      idTransaction,
+      idOrder,
+      email,
+      name,
+      token,
+      idEvent,
+      localities
+    } = req.body;
+
+    if (!Array.isArray(localities) || localities.length === 0) {
+      return res.status(400).json({ message: 'No hay localidades seleccionadas' });
+    }
+
+    // Crear el comprador
+    const buyer = await Buyer.create({
+      idTransaction,
+      idOrder,
+      email,
+      name,
+      token,
+      idEvent,
+      orderStatus: 0
+    }, { transaction });
+
+    const productsToInsert = [];
+
+    for (const loc of localities) {
+      const { idEventLocation, quantity } = loc;
+
+      for (let i = 0; i < quantity; i++) {
+        const generatedToken = `${token}-${idEventLocation}-${i + 1}`;
+
+        productsToInsert.push({
+          idBuyer: buyer.idBuyer,
+          idEvent,
+          idEventLocation,
+          name_product: `Entrada Evento ${idEvent}`,
+          lot: `L${idEventLocation}`,
+          purchase_status: 'Pagado',
+          check_in_status: false,
+          eTicket: generatedToken,
+          token: generatedToken,
+          quantity: 1,
+          buyer_name: name,
+          buyer_email: email
+        });
+      }
+    }
+
+    await Product.bulkCreate(productsToInsert, { transaction });
+    await transaction.commit();
+
+    return res.status(200).json({
+      message: 'Compra registrada exitosamente',
+      entries: productsToInsert.length
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error en compra:', error);
+    return res.status(500).json({
+      message: 'Error al registrar la compra',
+      error
+    });
+  }
+};
+
+
 export const sendVerificationEmail = async (code: string, email: string) => {
    try {
       const emailBody: string = buildEmailBody(code);
