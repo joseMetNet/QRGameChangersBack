@@ -8,6 +8,14 @@ const Product = db.define(
          type: DataTypes.STRING,
          allowNull: false
       },
+      idEnvent: {
+         type: DataTypes.INTEGER,
+         allowNull: false
+      },
+      idEventLocation: {
+         type: DataTypes.INTEGER,
+         allowNull: false
+      },
       name_product: {
          type: DataTypes.STRING,
          allowNull: false
@@ -140,6 +148,10 @@ const Product = db.define(
       updatedAt: {
          type: DataTypes.DATE,
          defaultValue: DataTypes.NOW
+      },
+      token: {
+         type: DataTypes.STRING,
+         allowNull: false
       }
    },
    {
@@ -152,6 +164,8 @@ export default Product;
 export interface ProductInterface {
    id?: number;
    id_check_in?: null;
+   idEnvent?: number;
+   idEventLocation?: number;
    name_product?: string;
    lot?: string;
    offer_code?: string;
