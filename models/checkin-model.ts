@@ -3,6 +3,8 @@ import db from '../database/connection';
 
 export class CheckIn extends Model {
   declare idCheckIn: number;
+  declare idEvent: number;
+  declare idEventLocation: number;
   declare name: string;
   declare description: string;
   declare document: string;
@@ -18,6 +20,14 @@ CheckIn.init(
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
+    },
+    idEvent: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    idEventLocation: {
+      type: DataTypes.INTEGER,
+      allowNull: false
     },
     name: {
       type: DataTypes.STRING(128),

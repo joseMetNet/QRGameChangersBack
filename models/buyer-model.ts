@@ -18,6 +18,7 @@ interface BuyerAttributes {
   totalInstallment: string;
   code: string;
   token: string;
+  idEvent?: number;
 }
 
 export class Buyer extends Model {
@@ -39,6 +40,7 @@ export class Buyer extends Model {
   declare totalInstallment: string;
   declare code: string;
   declare token: string;
+  declare idEvent?: number;
 }
 
 Buyer.init(
@@ -114,6 +116,10 @@ Buyer.init(
     },
     token: {
       type: DataTypes.STRING(256),
+      allowNull: true
+    },
+    idEvent: {
+      type: DataTypes.INTEGER,
       allowNull: true
     }
   },

@@ -6,6 +6,8 @@ import userRouter from '../routes/usuario';
 import authRouter from '../routes/auth';
 import productRouter from '../routes/product.router';
 import emergencyRouter from '../routes/emergency.router';
+import eventRouter from '../routes/event.router';
+import eventLocationRouter from '../routes/eventLocation.router';
 
 class Server {
     private app: Application;
@@ -49,6 +51,8 @@ class Server {
         this.app.use("/api", userRouter);
         this.app.use("/api", productRouter);
         this.app.use("/api", emergencyRouter);
+        this.app.use("/api", eventRouter);
+        this.app.use("/api", eventLocationRouter)
     }
 
     listen() {
