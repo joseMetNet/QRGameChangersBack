@@ -1,202 +1,183 @@
 import { DataTypes } from 'sequelize';
 import db from '../database/connection';
+import { Buyer } from './buyer-model';
 
-const Product = db.define(
-   'Producto',
-   {
-      id_check_in: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      idEnvent: {
-         type: DataTypes.INTEGER,
-         allowNull: false
-      },
-      idEventLocation: {
-         type: DataTypes.INTEGER,
-         allowNull: false
-      },
-      name_product: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      lot: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      offer_code: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      lot_price: {
-         type: DataTypes.INTEGER,
-         allowNull: false
-      },
-      transactions: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      sale_date: {
-         type: DataTypes.DATE,
-         allowNull: false
-      },
-      confirmation_date: {
-         type: DataTypes.DATE,
-         allowNull: false
-      },
-      purchase_status: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      eTicket_blocked: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      invitation_type: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      buyer_name: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      buyer_email: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      buyer_document: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      buyer_phone: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      eTicket: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      check_in_status: {
-         type: DataTypes.BOOLEAN,
-         allowNull: false
-      },
-      check_in_date: {
-         type: DataTypes.DATE,
-         allowNull: false
-      },
-      participant_name: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      participant_email: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      register_person: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      postal_code: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      street: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      city: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      department: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      country: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      participant_phone: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      gender: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      birth_date: {
-         type: DataTypes.DATE,
-         allowNull: false
-      },
-      participant_phone2: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      url_check_in: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
-      upgrade_offer: {
-         type: DataTypes.STRING,
-         allowNull: false
-      },
+const Product = db.define('productos', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  id_check_in: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  idEvent: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  idEventLocation: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  name_product: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  lot: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  offer_code: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  lot_price: {
+    type: DataTypes.DECIMAL,
+    allowNull: true,
+  },
+  transactions: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  sale_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  confirmation_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  purchase_status: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  eTicket_blocked: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+  },
+  invitation_type: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  buyer_name: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  buyer_email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  buyer_document: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  buyer_phone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  eTicket: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  check_in_status: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    get() {
+      const raw = this.getDataValue('check_in_status');
+      return raw === 1;
+    },
+    set(value: boolean) {
+      this.setDataValue('check_in_status', value ? 1 : 0);
+    },
+  },
+  check_in_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  participant_name: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  participant_email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  register_person: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  postal_code: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  street: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  city: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  department: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  country: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  participant_phone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  birth_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  participant_phone2: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  url_check_in: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  upgrade_offer: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  token: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  quantity: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  idBuyer: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+}, {
+  tableName: 'productos',
+  timestamps: false,
+  freezeTableName: true,
+});
 
-      createdAt: {
-         type: DataTypes.DATE,
-         defaultValue: DataTypes.NOW
-      },
-      updatedAt: {
-         type: DataTypes.DATE,
-         defaultValue: DataTypes.NOW
-      },
-      token: {
-         type: DataTypes.STRING,
-         allowNull: false
-      }
-   },
-   {
-      timestamps: false
-   }
-);
+Buyer.hasMany(Product, { foreignKey: 'idBuyer' });
+Product.belongsTo(Buyer, { foreignKey: 'idBuyer' });
 
 export default Product;
-
-export interface ProductInterface {
-   id?: number;
-   id_check_in?: null;
-   idEnvent?: number;
-   idEventLocation?: number;
-   name_product?: string;
-   lot?: string;
-   offer_code?: string;
-   lot_price?: number;
-   transactions?: string;
-   sale_date?: Date;
-   confirmation_date?: Date;
-   purchase_status?: string;
-   eTicket_blocked?: null;
-   invitation_type?: string;
-   buyer_name?: string;
-   buyer_email?: string;
-   buyer_document?: null;
-   buyer_phone?: null;
-   eTicket?: string;
-   check_in_status?: boolean;
-   check_in_date?: Date;
-   participant_name?: string;
-   participant_email?: string;
-   register_person?: string;
-   postal_code?: string;
-   street?: string;
-   city?: string;
-   department?: null;
-   country?: string;
-   participant_phone?: string;
-   gender?: null;
-   birth_date?: null;
-   participant_phone2?: string;
-   url_check_in?: string;
-   upgrade_offer?: string;
-   createdAt?: null;
-   updatedAt?: null;
-}
