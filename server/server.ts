@@ -8,6 +8,8 @@ import productRouter from '../routes/product.router';
 import emergencyRouter from '../routes/emergency.router';
 import eventRouter from '../routes/event.router';
 import eventLocationRouter from '../routes/eventLocation.router';
+import departmentRouter from '../routes/department.router';
+import cityRouter from '../routes/city.router';
 
 class Server {
     private app: Application;
@@ -53,6 +55,8 @@ class Server {
         this.app.use("/api", emergencyRouter);
         this.app.use("/api", eventRouter);
         this.app.use("/api", eventLocationRouter)
+        this.app.use("/api", departmentRouter)
+        this.app.use("/api", cityRouter)
     }
 
     listen() {
