@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize';
 import db from '../database/connection';
 import { Buyer } from './buyer-model';
+import Order from './order-model';
 
 const Product = db.define('productos', {
   id: {
@@ -167,7 +168,7 @@ const Product = db.define('productos', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
-  idBuyer: {
+  idOrder: {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
@@ -177,7 +178,7 @@ const Product = db.define('productos', {
   freezeTableName: true,
 });
 
-Buyer.hasMany(Product, { foreignKey: 'idBuyer' });
-Product.belongsTo(Buyer, { foreignKey: 'idBuyer' });
+Order.hasMany(Product, { foreignKey: 'idOrder' });
+Product.belongsTo(Order, { foreignKey: 'idOrder' });
 
 export default Product;

@@ -7,6 +7,9 @@ import { Op, UUID } from 'sequelize';
 import db from '../database/connection';
 import { Buyer } from "../models/buyer-model";
 import { CheckIn } from "../models/checkin-model";
+import Order from '../models/order-model';
+import EventLocation from '../models/eventLocation.model';
+
 
 export const getProducts = async (req: Request, res: Response) => {
    try {
@@ -199,16 +202,19 @@ export const insertBuyer = async (req: Request, res: Response) => {
    }
 };
 
-export const insertBuyerAndProducts = async (req: Request, res: Response) => {
+export const insertOrderAndProducts = async (req: Request, res: Response) => {
   const transaction = await db.transaction();
 
   try {
     const {
-      idTransaction,
-      idOrder,
+      nombres,
+      apellidos,
+      telefono,
       email,
-      name,
-      token,
+      cedula,
+      direccion,
+      idCity,
+      idDepartment,
       idEvent,
       localities
     } = req.body;
@@ -217,38 +223,51 @@ export const insertBuyerAndProducts = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No hay localidades seleccionadas' });
     }
 
-    // Crear el comprador
-    const buyer = await Buyer.create({
-      idTransaction,
-      idOrder,
+    const eventLocationIds: number[] = localities.map((loc: { idEventLocation: number }) => loc.idEventLocation);
+
+    const locations = await EventLocation.findAll({
+      where: { idEventLocation: eventLocationIds }
+    });
+
+    const locationPriceMap: { [key: number]: number } = {};
+    locations.forEach((loc: EventLocation) => {
+      locationPriceMap[loc.idEventLocation] = Number(loc.price);
+    });
+
+    const total = localities.reduce((acc: number, loc: { idEventLocation: number; quantity: number }) => {
+      const price = locationPriceMap[loc.idEventLocation] || 0;
+      return acc + loc.quantity * price;
+    }, 0);
+
+    const order : any= await Order.create({
+      nombres,
+      apellidos,
+      telefono,
       email,
-      name,
-      token,
-      idEvent,
-      orderStatus: 0
+      cedula,
+      direccion,
+      idCity,
+      idDepartment,
+      total
     }, { transaction });
 
     const productsToInsert = [];
 
     for (const loc of localities) {
       const { idEventLocation, quantity } = loc;
+      const price = locationPriceMap[idEventLocation] || 0;
 
       for (let i = 0; i < quantity; i++) {
-        const generatedToken = `${token}-${idEventLocation}-${i + 1}`;
-
         productsToInsert.push({
-          idBuyer: buyer.idBuyer,
+          idOrder: order.idOrder,
           idEvent,
           idEventLocation,
           name_product: `Entrada Evento ${idEvent}`,
           lot: `L${idEventLocation}`,
-          purchase_status: 'Pagado',
-          check_in_status: false,
-          eTicket: generatedToken,
-          token: generatedToken,
           quantity: 1,
-          buyer_name: name,
-          buyer_email: email
+          buyer_name: `${nombres} ${apellidos}`,
+          buyer_email: email,
+          lot_price: price
         });
       }
     }
@@ -257,20 +276,21 @@ export const insertBuyerAndProducts = async (req: Request, res: Response) => {
     await transaction.commit();
 
     return res.status(200).json({
-      message: 'Compra registrada exitosamente',
-      entries: productsToInsert.length
+      message: 'Orden y productos registrados exitosamente',
+      entries: productsToInsert.length,
+      total,
+      orderId: order.idOrder
     });
 
   } catch (error) {
     await transaction.rollback();
-    console.error('Error en compra:', error);
+    console.error('Error al registrar la orden:', error);
     return res.status(500).json({
-      message: 'Error al registrar la compra',
+      message: 'Error al registrar la orden',
       error
     });
   }
 };
-
 
 export const sendVerificationEmail = async (code: string, email: string) => {
    try {
