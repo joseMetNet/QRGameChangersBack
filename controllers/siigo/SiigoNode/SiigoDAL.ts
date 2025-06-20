@@ -152,10 +152,12 @@ export class SiigoDAL {
                 }
             });
 
+            console.log(`Invoice created successfully: ${response.data}`);
+
             return response.data as string;
-        } catch (error) {
-            console.error('Error creating invoice:', error);
-            throw new Error(`Failed to create invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err: any) {
+            console.error('Error creating invoice:', err.message);
+            throw new Error(`Failed to create invoice: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
     }
 

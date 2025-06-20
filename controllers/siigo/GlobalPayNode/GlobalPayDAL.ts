@@ -216,7 +216,7 @@ FROM TB_ORDER AS tbo
             const cityName = siigoAddressExist ? siigoAddress?.city.city_name : city;
 
             const baseJson = {
-                document: { id: 4361 },
+                document: { id: 27290 },
                 date: new Date().toISOString().split('T')[0],
                 customer: {
                     person_type: "Person",
@@ -259,7 +259,8 @@ FROM TB_ORDER AS tbo
                 observations: "Producto comprado desde web",
                 items: items,
                 payments: items.map(item => ({
-                    id: 7236,
+                    id: 9625,
+                    due_date: new Date().toISOString().split('T')[0],
                     value: Math.round(item.price * item.quantity )//* (item.percentage! + 1) * 100) / 100
                 }))
             };
@@ -267,13 +268,12 @@ FROM TB_ORDER AS tbo
             const json = JSON.stringify(baseJson);
             Logger.info('Invoice JSON generated', { baseJson });
 
-            //const siigoResponse = await this.siigoService.createInvoiceAsync(json);
-            //Logger.success('Siigo invoice created', { siigoResponse });
-
-            return "hello";// siigoResponse;
-        } catch (error) {
-            Logger.error('Error creating invoice', error);
-            throw error;
+            const siigoResponse = await this.siigoService.createInvoiceAsync(json);
+            Logger.success('Siigo invoice created', { siigoResponse });
+            return siigoResponse;
+        } catch (err: any) {
+            Logger.error('Error creating invoice', err.message || err);
+            throw err;
         }
     }
 } 
