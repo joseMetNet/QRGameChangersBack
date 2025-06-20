@@ -68,8 +68,6 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
 
     public async processWebhook(payload: GlobalPayWebhook): Promise<void> {
         try {
-            Logger.info('Processing webhook payload', payload);
-
             if (payload.transaction.status === "1") {
                 Logger.info('Transaction successful, creating invoice', {
                     transactionId: payload.transaction.id,
@@ -99,6 +97,8 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
 
     private async createInvoice(idOrder: string): Promise<string> {
         try {
+            Logger.info(`Starting invoice creation for order ID: ${idOrder}`);
+
             let orderList: OrderDB[] = [];
             let city = '';
             let department = '';
@@ -109,122 +109,110 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
             let lastName = '';
             let city_code = '';
             let state_code = '';
-            let idStore = -1;
             let shippingCost = '';
             let categoryShipping = '';
             let numberDocument = '';
 
             const query = `
-                SELECT DISTINCT
-                    qq.idOrder,
-                    hh.reference,
-                    cl.address AS direccion,
-                    cl.phone AS telefono,
-                    cl.mail AS correo,
-                    cl.Name AS nombre,
-                    cl.LastName apellido,
-                    cl.numberDocument,
-                    cl.idTypeDocument,
-                    cl.idClient,
-                    c.City AS ciudad,
-                    c.code AS city_code,
-                    d.code AS state_code,
-                    d.nameDepartment AS departamento,
-                    o.idStore AS idStore,
-                    ng.shippingCost,
-                    qq.quantity oQuantity,
-                    ng.categoryShipping,
-                    ed.idNeighborhood
-                FROM
-                    TB_ProductOrder AS qq
-                LEFT JOIN
-                    TB_Product AS hh ON hh.idProduct = qq.idProduct
-                LEFT JOIN
-                    TB_OrderShipping AS dd ON dd.idOrder = qq.idOrder
-                LEFT JOIN
-                    TB_NeighborhoodShipping AS ed ON ed.idNeighborhood = dd.idNeighborhoodShipping
-                LEFT JOIN
-                    TB_Order AS o ON o.idOrder = qq.idOrder
-                LEFT JOIN
-                    TB_NeighborhoodShipping AS ng ON ng.idNeighborhoodShipping = ed.idNeighborhoodShipping
-                LEFT JOIN
-                    TB_Neighborhood AS nd ON nd.idNeighborhood = ng.idNeighborhood
-                LEFT JOIN
-                    TB_Promotion AS ot ON ot.idProduct = hh.idProduct
-                LEFT JOIN
-                    TB_Client cl ON cl.idClient = o.idClient
-                INNER JOIN
-                    TB_City c ON c.idCity = cl.idCity
-                INNER JOIN
-                    TB_Department d ON d.idDepartment = c.idDepartment
-                WHERE
-                    qq.idOrder = :idOrder
+                        SELECT DISTINCT tbo.idOrder,
+                tbo.nombres firstName,
+                tbo.apellidos lastName,
+                tbo.email,
+                            tbo.cedula as documentNumber,
+                tbo.telefono as phone,
+                tbo.direccion as address,
+                tbc.city,
+                tbp.quantity as quantity,
+                tbc.code as city_code,
+                tbd.code as state_code,
+                tbd.nameDepartment as department,
+                tbel.reference
+FROM TB_ORDER AS tbo
+         LEFT JOIN productos AS tbp ON tbp.idOrder = tbo.idOrder
+         LEFT JOIN TB_EventLocation as tbel ON tbel.idEventLocation=tbp.idEventLocation
+         LEFT JOIN TB_City AS tbc ON tbc.idCity = tbo.idCity
+         LEFT JOIN TB_Department AS tbd ON tbd.idDepartment = tbo.idDepartment
+            WHERE tbo.idOrder = :idOrder;
             `;
 
-            const [results] = await db.query(query, {
+            const results = await db.query(query, {
                 replacements: { idOrder: parseInt(idOrder) },
                 type: QueryTypes.SELECT
-            });
+            }) as any[];
 
-            if (Array.isArray(results)) {
+
+            if (results && results.length > 0) {
                 results.forEach((row: any) => {
                     orderList.push({
                         Reference: row.reference,
-                        Quantity: row.oQuantity
+                        Quantity: row.quantity
                     });
 
-                    if (!city) city = row.ciudad;
-                    if (!department) department = row.departamento;
-                    if (!address) address = row.direccion;
-                    if (!phone) phone = row.telefono;
-                    if (!mail) mail = row.correo;
-                    if (!name) name = row.nombre;
-                    if (!lastName) lastName = row.apellido;
+                    if (!city) city = row.city;
+                    if (!department) department = row.department;
+                    if (!address) address = row.address;
+                    if (!phone) phone = row.phone;
+                    if (!mail) mail = row.email;
+                    if (!name) name = row.firstName;
+                    if (!lastName) lastName = row.lastName;
                     if (!state_code) state_code = row.state_code;
                     if (!city_code) city_code = row.city_code;
-                    if (idStore === -1) idStore = row.idStore;
                     if (!shippingCost) shippingCost = row.shippingCost;
                     if (!categoryShipping) categoryShipping = row.categoryShipping;
-                    if (!numberDocument) numberDocument = row.numberDocument;
+                    if (!numberDocument) numberDocument = row.documentNumber;
                 });
             }
 
             const processOrder = async (orderDb: OrderDB) => {
-                const productResult = await this.siigoService.findSiigoProductAsync(orderDb.Reference.split('-')[0]);
-                const seller = this.siigoService.getSeller(idStore);
-                const quantity = orderDb.Quantity ? parseFloat(orderDb.Quantity) : 0;
+                try {
+                    Logger.info(`Processing product with reference: ${orderDb.Reference}`);
+                    const productResult = await this.siigoService.findSiigoProductAsync(orderDb.Reference);
+                    const quantity = orderDb.Quantity ? parseFloat(orderDb.Quantity) : 0;
 
-                return productResult.results.map(p => {
-                    const basePrice = p.prices[0].price_list[0].value;
-                    const taxRate = p.taxes[0].percentage / 100;
-                    const priceP = Math.round((basePrice / (1 + taxRate)) * 100) / 100;
+                    if (!productResult.results || productResult.results.length === 0) {
+                        Logger.error(`No product found for reference: ${orderDb.Reference}`);
+                        return [];
+                    }
 
-                    console.log(`price $${basePrice} with tax multiplier ${taxRate}`);
+                    return productResult.results.map(p => {
+                        const basePrice = p.prices[0].price_list[0].value;
+                        const taxRate = p.taxes[0].percentage / 100;
+                        const priceP = Math.round((basePrice / (1 + taxRate)) * 100) / 100;
 
-                    return {
-                        code: p.code,
-                        quantity: quantity,
-                        price: priceP,
-                        discount: 0,
-                        //warehouse: seller.idWarehouse,
-                        taxId: p.taxes[0].id,
-                        percentage: taxRate,
-                        taxes: p.taxes.map(tax => ({ id: tax.id }))
-                    };
-                });
+                        console.log(`price $${basePrice} with tax multiplier ${taxRate}`);
+
+                        return {
+                            code: p.code,
+                            quantity: quantity,
+                            price: priceP,
+                            discount: 0,
+                            //taxId: p.taxes[0].id,
+                            //percentage: taxRate,
+                            //taxes: p.taxes.map(tax => ({ id: tax.id }))
+                        };
+                    });
+                } catch (error) {
+                    Logger.error(`Error processing order ${orderDb.Reference}:`, error);
+                    return [];
+                }
             };
 
             const itemGroups = await Promise.all(orderList.map(processOrder));
-            const itemGroup = this.siigoService.addNewSiigoItem(categoryShipping, parseFloat(shippingCost), itemGroups);
-            const items = itemGroup
+            const items = itemGroups
                 .flat()
                 .filter(item => item.quantity > 0);
 
             const [siigoAddressExist, siigoAddress] = await this.siigoService.findSiigoClient(numberDocument);
 
-            const stateCode = siigoAddressExist ? siigoAddress?.city.state_code : state_code.padStart(2, '0');
+            Logger.info('Debug - Siigo client lookup result', {
+                numberDocument,
+                siigoAddressExist,
+                siigoAddress: siigoAddress
+            });
+
+            const stateCode = siigoAddressExist ? siigoAddress?.city.state_code : String(state_code).padStart(2, '0');
             const stateName = siigoAddressExist ? siigoAddress?.city.state_name : department;
-            const cityCode = siigoAddressExist ? siigoAddress?.city.city_code : this.siigoService.buildCompleteCityCode(state_code, city_code);
+            const cityCode = siigoAddressExist ? siigoAddress?.city.city_code : this.siigoService.buildCompleteCityCode(String(state_code), String(city_code));
             const cityName = siigoAddressExist ? siigoAddress?.city.city_name : city;
 
             const baseJson = {
@@ -265,24 +253,24 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
                     }]
                 },
                 seller: 894,
-                cost_center: 612,
+                cost_center: 634,
                 stamp: { send: false },
                 mail: { send: false },
                 observations: "Producto comprado desde web",
                 items: items,
                 payments: items.map(item => ({
                     id: 7236,
-                    value: Math.round(item.price * item.quantity * (item.percentage! + 1) * 100) / 100
+                    value: Math.round(item.price * item.quantity )//* (item.percentage! + 1) * 100) / 100
                 }))
             };
 
             const json = JSON.stringify(baseJson);
-            Logger.info('Invoice JSON generated', { json });
+            Logger.info('Invoice JSON generated', { baseJson });
 
-            const siigoResponse = await this.siigoService.createInvoiceAsync(json);
-            Logger.success('Siigo invoice created', { siigoResponse });
+            //const siigoResponse = await this.siigoService.createInvoiceAsync(json);
+            //Logger.success('Siigo invoice created', { siigoResponse });
 
-            return siigoResponse;
+            return "hello";// siigoResponse;
         } catch (error) {
             Logger.error('Error creating invoice', error);
             throw error;
