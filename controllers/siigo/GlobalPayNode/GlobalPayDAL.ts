@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { QueryTypes, Sequelize } from 'sequelize';
 import { IGlobalPayWebhookService, GlobalPayWebhook } from './GlobalPayDTO';
 import { SiigoDAL } from "../SiigoNode/SiigoDAL";
+import db from "../../../database/connection";
 
 interface OrderDB {
     Reference: string;
@@ -44,13 +45,11 @@ class Logger {
 }
 
 export class GlobalPayWebhookService implements IGlobalPayWebhookService {
-    private readonly connectionString: string;
     private readonly appKey: string;
     private readonly siigoService: SiigoDAL;
 
-    constructor(config: any, siigoService: SiigoDAL) {
-        this.appKey = config.GlobalPay?.AppKey || 'TU_APP_KEY';
-        this.connectionString = config.connectionStrings?.DefaultConnection;
+    constructor(siigoService: SiigoDAL) {
+        this.appKey = 'OWJjYmU3YjAtM2FmOS00ZDI5LWFiNmQtNWY2MmZkNDI2MzdmOjRzcnpZfjIlY1c=';
         this.siigoService = siigoService;
     }
 
@@ -100,7 +99,6 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
 
     private async createInvoice(idOrder: string): Promise<string> {
         try {
-            const sequelize = new Sequelize(this.connectionString);
             let orderList: OrderDB[] = [];
             let city = '';
             let department = '';
@@ -163,7 +161,7 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
                     qq.idOrder = :idOrder
             `;
 
-            const [results] = await sequelize.query(query, {
+            const [results] = await db.query(query, {
                 replacements: { idOrder: parseInt(idOrder) },
                 type: QueryTypes.SELECT
             });
@@ -208,7 +206,7 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
                         quantity: quantity,
                         price: priceP,
                         discount: 0,
-                        warehouse: seller.idWarehouse,
+                        //warehouse: seller.idWarehouse,
                         taxId: p.taxes[0].id,
                         percentage: taxRate,
                         taxes: p.taxes.map(tax => ({ id: tax.id }))
@@ -266,10 +264,10 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
                         }
                     }]
                 },
-                seller: this.siigoService.getSeller(idStore).idSeller,
-                cost_center: this.siigoService.getSeller(idStore).idCostCenter,
-                stamp: { send: true },
-                mail: { send: true },
+                seller: 894,
+                cost_center: 612,
+                stamp: { send: false },
+                mail: { send: false },
                 observations: "Producto comprado desde web",
                 items: items,
                 payments: items.map(item => ({

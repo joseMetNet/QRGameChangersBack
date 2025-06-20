@@ -14,8 +14,7 @@ export class SiigoDAL {
     private tokenExpiry: Date = new Date();
     private readonly tokenRefreshLock = new Promise<void>((resolve) => resolve());
 
-    constructor(configuration: any) {
-        this.configuration = configuration;
+    constructor() {
         this.httpClient = axios.create();
     }
 
