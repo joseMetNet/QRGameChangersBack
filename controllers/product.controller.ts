@@ -202,6 +202,96 @@ export const insertBuyer = async (req: Request, res: Response) => {
    }
 };
 
+// export const insertOrderAndProducts = async (req: Request, res: Response) => {
+//   const transaction = await db.transaction();
+
+//   try {
+//     const {
+//       nombres,
+//       apellidos,
+//       telefono,
+//       email,
+//       cedula,
+//       direccion,
+//       idCity,
+//       idDepartment,
+//       idEvent,
+//       localities
+//     } = req.body;
+
+//     if (!Array.isArray(localities) || localities.length === 0) {
+//       return res.status(400).json({ message: 'No hay localidades seleccionadas' });
+//     }
+
+//     const eventLocationIds: number[] = localities.map((loc: { idEventLocation: number }) => loc.idEventLocation);
+
+//     const locations = await EventLocation.findAll({
+//       where: { idEventLocation: eventLocationIds }
+//     });
+
+//     const locationPriceMap: { [key: number]: number } = {};
+//     locations.forEach((loc: EventLocation) => {
+//       locationPriceMap[loc.idEventLocation] = Number(loc.price);
+//     });
+
+//     const total = localities.reduce((acc: number, loc: { idEventLocation: number; quantity: number }) => {
+//       const price = locationPriceMap[loc.idEventLocation] || 0;
+//       return acc + loc.quantity * price;
+//     }, 0);
+
+//     const order : any= await Order.create({
+//       nombres,
+//       apellidos,
+//       telefono,
+//       email,
+//       cedula,
+//       direccion,
+//       idCity,
+//       idDepartment,
+//       total
+//     }, { transaction });
+
+//     const productsToInsert = [];
+
+//     for (const loc of localities) {
+//       const { idEventLocation, quantity } = loc;
+//       const price = locationPriceMap[idEventLocation] || 0;
+
+//       for (let i = 0; i < quantity; i++) {
+//         productsToInsert.push({
+//           idOrder: order.idOrder,
+//           idEvent,
+//           idEventLocation,
+//           name_product: `Entrada Evento ${idEvent}`,
+//           lot: `L${idEventLocation}`,
+//           quantity: 1,
+//           buyer_name: `${nombres} ${apellidos}`,
+//           buyer_email: email,
+//           lot_price: price
+//         });
+//       }
+//     }
+
+//     await Product.bulkCreate(productsToInsert, { transaction });
+//     await transaction.commit();
+
+//     return res.status(200).json({
+//       message: 'Orden y productos registrados exitosamente',
+//       entries: productsToInsert.length,
+//       total,
+//       orderId: order.idOrder
+//     });
+
+//   } catch (error) {
+//     await transaction.rollback();
+//     console.error('Error al registrar la orden:', error);
+//     return res.status(500).json({
+//       message: 'Error al registrar la orden',
+//       error
+//     });
+//   }
+// };
+
 export const insertOrderAndProducts = async (req: Request, res: Response) => {
   const transaction = await db.transaction();
 
@@ -216,30 +306,51 @@ export const insertOrderAndProducts = async (req: Request, res: Response) => {
       idCity,
       idDepartment,
       idEvent,
-      localities
+      localities,
+      fechaHora,
+      idMotivo,
+      observacionesSalud,
+      comentarios,
+      fechaCumpleanos,
+      idCountry,
+      edad,
+      idSexo
     } = req.body;
 
-    if (!Array.isArray(localities) || localities.length === 0) {
+
+    let parsedLocalities;
+    try {
+      parsedLocalities = typeof localities === 'string' ? JSON.parse(localities) : localities;
+    } catch (e) {
+      return res.status(400).json({ message: 'El formato de localities no es válido' });
+    }
+
+    if (!Array.isArray(parsedLocalities) || parsedLocalities.length === 0) {
       return res.status(400).json({ message: 'No hay localidades seleccionadas' });
     }
 
-    const eventLocationIds: number[] = localities.map((loc: { idEventLocation: number }) => loc.idEventLocation);
+    const eventLocationIds: number[] = parsedLocalities.map(
+      (loc: { idEventLocation: number }) => loc.idEventLocation
+    );
 
     const locations = await EventLocation.findAll({
       where: { idEventLocation: eventLocationIds }
     });
 
     const locationPriceMap: { [key: number]: number } = {};
-    locations.forEach((loc: EventLocation) => {
+    locations.forEach((loc: any) => {
       locationPriceMap[loc.idEventLocation] = Number(loc.price);
     });
 
-    const total = localities.reduce((acc: number, loc: { idEventLocation: number; quantity: number }) => {
-      const price = locationPriceMap[loc.idEventLocation] || 0;
-      return acc + loc.quantity * price;
-    }, 0);
+    const total = parsedLocalities.reduce(
+      (acc: number, loc: { idEventLocation: number; quantity: number }) => {
+        const price = locationPriceMap[loc.idEventLocation] || 0;
+        return acc + loc.quantity * price;
+      },
+      0
+    );
 
-    const order : any= await Order.create({
+    const orderData: any = {
       nombres,
       apellidos,
       telefono,
@@ -249,11 +360,22 @@ export const insertOrderAndProducts = async (req: Request, res: Response) => {
       idCity,
       idDepartment,
       total
-    }, { transaction });
+    };
+
+    if (fechaHora) orderData.fechaHora = fechaHora;
+    if (idMotivo) orderData.idMotivo = idMotivo;
+    if (observacionesSalud) orderData.observacionesSalud = observacionesSalud;
+    if (comentarios) orderData.comentarios = comentarios;
+    if (fechaCumpleanos) orderData.fechaCumpleanos = fechaCumpleanos;
+    if (idCountry) orderData.idCountry = idCountry;
+    if (edad) orderData.edad = edad;
+    if (idSexo) orderData.idSexo = idSexo;
+
+    const order: any = await Order.create(orderData, { transaction });
 
     const productsToInsert = [];
 
-    for (const loc of localities) {
+    for (const loc of parsedLocalities) {
       const { idEventLocation, quantity } = loc;
       const price = locationPriceMap[idEventLocation] || 0;
 
@@ -281,7 +403,6 @@ export const insertOrderAndProducts = async (req: Request, res: Response) => {
       total,
       orderId: order.idOrder
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error('Error al registrar la orden:', error);

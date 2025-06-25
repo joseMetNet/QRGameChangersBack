@@ -11,6 +11,9 @@ import eventLocationRouter from '../routes/eventLocation.router';
 import departmentRouter from '../routes/department.router';
 import cityRouter from '../routes/city.router';
 import siigoRouter from "../routes/siigo.router";
+import motivoRouter from '../routes/motivos.router';
+import countryRouter from '../routes/country.router';
+import sexRouter from '../routes/sex.router';
 
 class Server {
     private app: Application;
@@ -59,6 +62,9 @@ class Server {
         this.app.use("/api", departmentRouter);
         this.app.use("/api", cityRouter);
         this.app.use("/api", siigoRouter);
+        this.app.use("/api", motivoRouter);
+        this.app.use("/api", countryRouter);
+        this.app.use("/api", sexRouter)
     }
 
     listen() {
