@@ -256,7 +256,7 @@ FROM TB_ORDER AS tbo
                 cost_center: 634,
                 stamp: { send: false },
                 mail: { send: false },
-                observations: "⁠Abstenerse de realizar Retefuente. Empresa con beneficio de Renta Exenta otorgado por el Min. de Cultura, Res. 1568 del 22 de Octubre de 2021 \nAbstenerse de RETEICA.  Act. económica 9004  no gravada con el ICA, de conformidad la res. No. SHD-000265 del 13 de abril del 2021 en su artículo 2 Parágrafo 2.",
+                observations: "Abstenerse de realizar Retefuente. Empresa con beneficio de Renta Exenta otorgado por el Min. de Cultura, Res. 1568 del 22 de Octubre de 2021 \nAbstenerse de RETEICA.  Act. económica 9004  no gravada con el ICA, de conformidad la res. No. SHD-000265 del 13 de abril del 2021 en su artículo 2 Parágrafo 2.",
                 items: items,
                 payments: items.map(item => ({
                     id: 9625,
