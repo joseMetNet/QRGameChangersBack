@@ -3,6 +3,9 @@ import { QueryTypes, Sequelize } from 'sequelize';
 import { IGlobalPayWebhookService, GlobalPayWebhook } from './GlobalPayDTO';
 import { SiigoDAL } from "../SiigoNode/SiigoDAL";
 import db from "../../../database/connection";
+import Mailgun from "mailgun.js";
+import FormData from "form-data";
+import { EnvConfig } from "../../../config/config";
 
 interface OrderDB {
     Reference: string;
@@ -47,51 +50,48 @@ class Logger {
 export class GlobalPayWebhookService implements IGlobalPayWebhookService {
     private readonly appKey: string;
     private readonly siigoService: SiigoDAL;
+    private readonly mailgun: ReturnType<Mailgun['client']>;
+    private readonly fromDomain: string;
+    private readonly fromEmail: string;
 
     constructor(siigoService: SiigoDAL) {
         this.appKey = 'OWJjYmU3YjAtM2FmOS00ZDI5LWFiNmQtNWY2MmZkNDI2MzdmOjRzcnpZfjIlY1c=';
         this.siigoService = siigoService;
-    }
 
-    public verifyStoken(payload: GlobalPayWebhook): boolean {
-        if (!payload?.transaction || !payload?.user) {
-            return false;
-        }
-
-        const concatenated = `${payload.transaction.id}${payload.transaction.application_code}${payload.user.id}${this.appKey}`;
-        const stokenGenerated = createHash('md5')
-            .update(concatenated)
-            .digest('hex');
-
-        return stokenGenerated === payload.transaction.stoken?.toLowerCase();
+        // Initialize Mailgun
+        const mailgunClient = new Mailgun(FormData);
+        this.mailgun = mailgunClient.client({
+            username: "api",
+            key: EnvConfig.MAILGUN_API_KEY,
+        });
+        this.fromDomain = "sandbox6bc14d54c50844d98489030220066478.mailgun.org";
+        this.fromEmail = `GlobalPay Webhook <postmaster@${this.fromDomain}>`;
     }
 
     public async processWebhook(payload: GlobalPayWebhook): Promise<void> {
         try {
-            if (payload.transaction.status === "1") {
+            if (payload.query.x_respuesta === "Aceptada") {
                 Logger.info('Transaction successful, creating invoice', {
-                    transactionId: payload.transaction.id,
-                    reference: payload.transaction.dev_reference
+                    response: payload.query.x_response_reason_text,
                 });
 
-                const response = await this.createInvoice(payload.transaction.dev_reference);
+                const orderId = (payload.query.x_description).split('#')[1]?.trim();
+                if (!orderId) {
+                    Logger.error('Order ID not found in description', {
+                        description: payload.query.x_description
+                    });
+                    throw new Error('Order ID not found in description');
+                }
 
-                Logger.success('Invoice created successfully', {
-                    orderId: payload.transaction.dev_reference,
-                    siigoResponse: response
-                });
+                const response = await this.createInvoice(orderId);
+
+                await this.sendEmail(response);
+
             } else {
-                Logger.info('Transaction not successful, skipping invoice creation', {
-                    status: payload.transaction.status,
-                    transactionId: payload.transaction.id
-                });
+                await this.sendEmail(`Transaction failed: ${JSON.stringify(payload)}`);
             }
-        } catch (error) {
-            Logger.error('Error processing webhook', {
-                error: error,
-                payload: payload
-            });
-            throw error;
+        } catch (err: any) {
+            await this.sendEmail(`Error processing webhook$ ${JSON.stringify(err)}`);
         }
     }
 
@@ -114,25 +114,27 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
             let numberDocument = '';
 
             const query = `
-                        SELECT DISTINCT tbo.idOrder,
+            SELECT
+                tbo.idOrder,
                 tbo.nombres firstName,
                 tbo.apellidos lastName,
                 tbo.email,
-                            tbo.cedula as documentNumber,
+                tbo.cedula as documentNumber,
                 tbo.telefono as phone,
                 tbo.direccion as address,
                 tbc.city,
-                tbp.quantity as quantity,
+                SUM(tbp.quantity) as quantity,
                 tbc.code as city_code,
                 tbd.code as state_code,
                 tbd.nameDepartment as department,
                 tbel.reference
-FROM TB_ORDER AS tbo
-         LEFT JOIN productos AS tbp ON tbp.idOrder = tbo.idOrder
-         LEFT JOIN TB_EventLocation as tbel ON tbel.idEventLocation=tbp.idEventLocation
-         LEFT JOIN TB_City AS tbc ON tbc.idCity = tbo.idCity
-         LEFT JOIN TB_Department AS tbd ON tbd.idDepartment = tbo.idDepartment
-            WHERE tbo.idOrder = :idOrder;
+            FROM TB_ORDER AS tbo
+            LEFT JOIN productos AS tbp ON tbp.idOrder = tbo.idOrder
+            LEFT JOIN TB_EventLocation as tbel ON tbel.idEventLocation=tbp.idEventLocation
+            LEFT JOIN TB_City AS tbc ON tbc.idCity = tbo.idCity
+            LEFT JOIN TB_Department AS tbd ON tbd.idDepartment = tbo.idDepartment
+            WHERE tbo.idOrder = :idOrder
+            GROUP BY tbo.idOrder, tbo.nombres, tbo.apellidos, tbo.email, tbo.cedula, tbo.telefono, tbo.direccion, tbc.city, tbc.code, tbd.code, tbd.nameDepartment, tbel.reference;
             `;
 
             const results = await db.query(query, {
@@ -186,9 +188,6 @@ FROM TB_ORDER AS tbo
                             quantity: quantity,
                             price: priceP,
                             discount: 0,
-                            //taxId: p.taxes[0].id,
-                            //percentage: taxRate,
-                            //taxes: p.taxes.map(tax => ({ id: tax.id }))
                         };
                     });
                 } catch (error) {
@@ -254,14 +253,14 @@ FROM TB_ORDER AS tbo
                 },
                 seller: 894,
                 cost_center: 634,
-                stamp: { send: false },
+                stamp: { send: true },
                 mail: { send: false },
                 observations: "Abstenerse de realizar Retefuente. Empresa con beneficio de Renta Exenta otorgado por el Min. de Cultura, Res. 1568 del 22 de Octubre de 2021 \nAbstenerse de RETEICA.  Act. económica 9004  no gravada con el ICA, de conformidad la res. No. SHD-000265 del 13 de abril del 2021 en su artículo 2 Parágrafo 2.",
                 items: items,
                 payments: items.map(item => ({
                     id: 9625,
                     due_date: new Date().toISOString().split('T')[0],
-                    value: Math.round(item.price * item.quantity )//* (item.percentage! + 1) * 100) / 100
+                    value: Math.round(item.price * item.quantity)//* (item.percentage! + 1) * 100) / 100
                 }))
             };
 
@@ -269,11 +268,32 @@ FROM TB_ORDER AS tbo
             Logger.info('Invoice JSON generated', { baseJson });
 
             const siigoResponse = await this.siigoService.createInvoiceAsync(json);
-            Logger.success('Siigo invoice created', { siigoResponse });
             return siigoResponse;
         } catch (err: any) {
             Logger.error('Error creating invoice', err.message || err);
             throw err;
+        }
+    }
+
+    private async sendEmail(response: string): Promise<void> {
+        try {
+            const emailBody = `Invoice created successfully:
+                Response from Siigo:
+                ${response}
+                Timestamp: ${new Date().toISOString()}
+            `;
+
+            const data = await this.mailgun.messages.create(this.fromDomain, {
+                from: this.fromEmail,
+                to: ["efpalaciosmo@unal.edu.co"],
+                subject: "Invoice Created - GlobalPay Transaction",
+                text: emailBody,
+            });
+
+            Logger.success('Invoice email sent successfully', data);
+        } catch (error) {
+            Logger.error('Error sending invoice email', error);
+            throw error;
         }
     }
 } 
