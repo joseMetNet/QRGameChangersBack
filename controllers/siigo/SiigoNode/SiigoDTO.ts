@@ -1,21 +1,9 @@
 export interface ProductResponse {
-    pagination: Pagination;
     results: Product[];
-    _links: Links;
-}
-
-export interface Links {
-    self: Self;
 }
 
 export interface Self {
     href: string | null;
-}
-
-export interface Pagination {
-    page: number;
-    page_size: number;
-    total_results: number;
 }
 
 export interface OrderDB {

@@ -115,7 +115,7 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
                 const response = await this.createInvoice(orderId);
 
                 // Send success notification
-                await this.sendSuccessEmail(response, orderId, query.x_ref_payco);
+                await this.sendSuccessEmail(JSON.stringify(response), orderId, query.x_ref_payco);
 
             } else {
                 Logger.error('Transaction failed', {
@@ -142,6 +142,7 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
     }
 
     private extractOrderId(description: string): string | null {
+        Logger.info('Extracting order ID from description', { description });
         if (!description) {
             return null;
         }
