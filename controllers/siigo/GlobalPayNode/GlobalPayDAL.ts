@@ -124,7 +124,6 @@ export class GlobalPayWebhookService implements IGlobalPayWebhookService {
                     amount: query.x_amount
                 });
 
-                await this.sendFailureEmail(payload, 'Transaction was not accepted');
             }
         } catch (err: any) {
             Logger.error('Error processing webhook', err);
