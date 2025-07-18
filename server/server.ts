@@ -14,13 +14,15 @@ import siigoRouter from "../routes/siigo.router";
 import motivoRouter from '../routes/motivos.router';
 import countryRouter from '../routes/country.router';
 import sexRouter from '../routes/sex.router';
+import checkinFaceIdRouter from '../routes/checkinfaceid.router';
+import bodyParser from 'body-parser';
 
 class Server {
     private app: Application;
     private port: string;
 
     constructor() {
-        this.app  = express();
+        this.app = express();
         this.port = process.env.PORT || '8080';
 
         // Métodos iniciales
@@ -31,13 +33,13 @@ class Server {
 
     async dbConnection() {
         try {
-          await db.authenticate();
-          console.log("database online");
+            await db.authenticate();
+            console.log("database online");
         } catch (error) {
-          console.log('error: ',error);
-          throw new Error("error");
+            console.log('error: ', error);
+            throw new Error("error");
         }
-      }
+    }
 
     middlewares() {
         // CORS
@@ -47,9 +49,13 @@ class Server {
             allowedHeaders: ['Content-Type', 'Authorization']
         }));
         // Lectura del body
-        this.app.use(express.json());
+        // this.app.use(express.json());
         // Carpeta pública
         this.app.use(express.static('public'));
+
+        this.app.use(bodyParser.json({ limit: '10mb' })); // ⬅️ importante para permitir base64 grandes
+        this.app.use(bodyParser.urlencoded({ extended: true , limit: '10mb' }));
+
     }
 
     routes() {
@@ -65,11 +71,12 @@ class Server {
         this.app.use("/api", motivoRouter);
         this.app.use("/api", countryRouter);
         this.app.use("/api", sexRouter)
+        this.app.use("/api", checkinFaceIdRouter);
     }
 
     listen() {
         this.app.listen(this.port, () => {
-            console.log('Servidor corriendo en puerto ' + this.port );
+            console.log('Servidor corriendo en puerto ' + this.port);
         })
     }
 }
