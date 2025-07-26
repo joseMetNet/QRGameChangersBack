@@ -1,7 +1,7 @@
 import { DataTypes, Model } from 'sequelize';
 import db from '../database/connection';
 
-export class CheckIn extends Model {
+export class CheckInFaceId extends Model {
   declare idCheckIn: number;
   declare idEvent: number;
   declare idEventLocation: number;
@@ -15,7 +15,7 @@ export class CheckIn extends Model {
   declare faceID: string;
 }
 
-CheckIn.init(
+CheckInFaceId.init(
   {
     idCheckIn: {
       type: DataTypes.INTEGER,
@@ -27,6 +27,10 @@ CheckIn.init(
       allowNull: false
     },
     idEventLocation: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    idSex: {
       type: DataTypes.INTEGER,
       allowNull: false
     },
@@ -59,7 +63,7 @@ CheckIn.init(
       allowNull: true
     },
     faceID: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING(256),
       allowNull: true
     }
   },
