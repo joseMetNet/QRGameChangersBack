@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
-import { CheckIn } from '../models/checkin-face-id-test';
+import { CheckInFaceId } from '../models/checkin-face-id-test';
 import { v4 as uuidv4 } from 'uuid';
-
+import { BlobServiceClient } from '@azure/storage-blob';
+import * as dotenv from 'dotenv';
+dotenv.config();
 // export const generateFaceID = (req: Request, res: Response) => {
 //   try {
 //     const { image } = req.body;
@@ -27,27 +29,76 @@ import { v4 as uuidv4 } from 'uuid';
 // };
 
 
-export const handleFaceRecognition = (req: Request, res: Response) => {
+// export const handleFaceRecognition = (req: Request, res: Response) => {
+//   try {
+//     // Verifica si se envió el archivo
+//     if (!req.file) {
+//       return res.status(400).json({ message: 'No se recibió ninguna imagen.' });
+//     }
+
+//     // Aquí podrías guardar la imagen si lo necesitas (req.file.buffer)
+//     // Por ahora, solo generamos un UUID y lo retornamos
+
+//     const faceID = uuidv4();
+//     return res.status(200).json({ faceID });
+//   } catch (error) {
+//     console.error('Error en reconocimiento facial:', error);
+//     return res.status(500).json({ message: 'Error en el servidor.' });
+//   }
+// };
+
+/**
+ * @funtion crea la imagen y la sube al azure para retornar la url publica de la imagen que recibe del front en baase 64
+ */
+
+const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING!;
+const CONTAINER_NAME = 'fac';
+
+export const handleFaceRecognition = async (req: Request, res: Response) => {
   try {
-    // Verifica si se envió el archivo
-    if (!req.file) {
-      return res.status(400).json({ message: 'No se recibió ninguna imagen.' });
+    const file = req.file;
+    console.log("data imagen", file);
+
+    if (!file) {
+      return res.status(400).json({ message: 'Imagen no encontrada en la solicitud' });
     }
 
-    // Aquí podrías guardar la imagen si lo necesitas (req.file.buffer)
-    // Por ahora, solo generamos un UUID y lo retornamos
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
 
-    const faceID = uuidv4();
-    return res.status(200).json({ faceID });
+    // await containerClient.createIfNotExists({ access: 'container' }); //el contenedor se crea si no existe
+    // Crear contenedor si no existe
+    await containerClient.createIfNotExists();
+    // Establecer acceso público explícitamente
+    await containerClient.setAccessPolicy('container');
+    
+
+    const blobName = `${Date.now()}-${file.originalname}`;
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    // ⬇️ Aquí se asegura el tipo de contenido para que se muestre en el navegador
+    await blockBlobClient.uploadData(file.buffer, {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype  // 👈 Tipo MIME correcto (ej. image/png, image/jpeg)
+      }
+    });
+
+    const imageUrl = blockBlobClient.url;
+
+    return res.status(200).json({
+      message: 'Imagen subida correctamente',
+      faceURL: imageUrl  // Esta URL se puede abrir directamente en el navegador
+    });
+
   } catch (error) {
-    console.error('Error en reconocimiento facial:', error);
-    return res.status(500).json({ message: 'Error en el servidor.' });
+    console.error('Error al subir imagen a Azure:', error);
+    return res.status(500).json({ message: 'Error al subir imagen a Azure', error });
   }
 };
 
 export const insertCheckInFaceId = async (req: Request, res: Response) => {
   try {
-    const { idEvent, idEventLocation, name, document, phone, email, description, faceID } = req.body;
+    const { idEvent, idEventLocation, idSex, name, document, phone, email, description, faceID } = req.body;
     if (!idEvent || !name || !document || !phone || !email || !faceID) {
       return res.status(400).json({
         message: 'Por favor complete todos los campos requeridos'
@@ -55,18 +106,19 @@ export const insertCheckInFaceId = async (req: Request, res: Response) => {
     }
 
     // Verificar si ya existe un check-in con ese faceID
-    const existingCheckIn = await CheckIn.findOne({ where: { faceID } });
-    if (existingCheckIn) {
-      return res.status(400).json({
-        message: 'El registro de FaceID ya existe o fue utilizado'
-      });
-    }
+    // const existingCheckIn = await CheckInFaceId.findOne({ where: { faceID } });
+    // if (existingCheckIn) {
+    //   return res.status(400).json({
+    //     message: 'El registro de FaceID ya existe o fue utilizado'
+    //   });
+    // }
 
     const token = crypto.randomUUID();
 
-    const checkin = CheckIn.build({
+    const checkin = CheckInFaceId.build({
       idEvent,
       idEventLocation,
+      idSex,
       name,
       document,
       phone,
