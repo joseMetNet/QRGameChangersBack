@@ -16,6 +16,8 @@ import countryRouter from '../routes/country.router';
 import sexRouter from '../routes/sex.router';
 import checkinFaceIdRouter from '../routes/checkinfaceid.router';
 import bodyParser from 'body-parser';
+import truoraRoutes from '../routes/truora.router';
+import truoraRouter from '../routes/truora.router';
 
 class Server {
     private app: Application;
@@ -53,7 +55,7 @@ class Server {
         // Carpeta pública
         this.app.use(express.static('public'));
 
-        this.app.use(bodyParser.json({ limit: '10mb' })); // ⬅️ importante para permitir base64 grandes
+        this.app.use(bodyParser.json({ limit: '10mb' })); // importante para permitir base64 grandes
         this.app.use(bodyParser.urlencoded({ extended: true , limit: '10mb' }));
 
     }
@@ -72,6 +74,7 @@ class Server {
         this.app.use("/api", countryRouter);
         this.app.use("/api", sexRouter)
         this.app.use("/api", checkinFaceIdRouter);
+        this.app.use("/api", truoraRouter);
     }
 
     listen() {
