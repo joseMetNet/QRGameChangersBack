@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 import db from '../database/connection';
 import Event from './event-model';
 
@@ -7,12 +7,17 @@ interface EventLocationAttributes {
     idEvent: number;
     locationName: string;
     price: number;
+    attendees:number;
 }
-class EventLocation extends Model<EventLocationAttributes> implements EventLocationAttributes {
+
+// 👇 Este type hace que idEventLocation sea opcional en la creación
+type EventLocationCreationAttributes = Optional<EventLocationAttributes, 'idEventLocation'>;
+class EventLocation extends Model<EventLocationAttributes, EventLocationCreationAttributes> implements EventLocationAttributes {
     public idEventLocation!: number;
     public idEvent!: number;
     public locationName!: string;
     public price!: number;
+    public attendees!:number;
 }
 
 EventLocation.init(
@@ -33,6 +38,11 @@ EventLocation.init(
         price: {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false
+        },
+        attendees:{
+            type:DataTypes.INTEGER,
+            allowNull:false,
+            defaultValue:0
         }
     },
     {
