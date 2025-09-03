@@ -1,6 +1,4 @@
 import { Request, Response } from 'express';
-import { BlobServiceClient } from "@azure/storage-blob";
-import multer from "multer";
 import Event from '../models/event-model';
 
 export const getEvent = async (req: Request, res: Response) => {
