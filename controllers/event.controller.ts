@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
+import { BlobServiceClient } from "@azure/storage-blob";
+import multer from "multer";
 import Event from '../models/event-model';
 
 export const getEvent = async (req: Request, res: Response) => {
    try {
       const numbers = await Event.findAll({
-         attributes: [ 'idEvent', 'name', 'isActive' ],
+         attributes: [ 'idEvent', 'name', 'isActive','description','eventDate','eventTime','organizer','eventImage','refundPolicy' ],
       });
 
       if (numbers.length == 0) {
@@ -24,3 +26,104 @@ export const getEvent = async (req: Request, res: Response) => {
       });
    }
 };
+/**
+ * Crear un evento
+ */
+export const createEvent = async (req: Request, res: Response) => {
+   try {
+      const { name, isActive, description, eventDate, eventTime, organizer, eventImage, refundPolicy } = req.body;
+
+      const newEvent = await Event.create({
+         name,
+         isActive,
+         description,
+         eventDate,
+         eventTime,
+         organizer,
+         eventImage,
+         refundPolicy,
+      });
+
+      return res.status(201).json({
+         message: 'Evento creado con éxito',
+         event: newEvent
+      });
+   } catch (error) {
+      console.error('error: ', error);
+      return res.status(500).json({
+         message: 'No se pudo crear el evento'
+      });
+   }
+};
+
+/**
+ * Actualizar un evento
+ */
+export const updateEvent = async (req: Request, res: Response) => {
+   try {
+      const { idEvent } = req.params;
+      const { name, isActive, description, eventDate, eventTime, organizer, eventImage, refundPolicy } = req.body;
+
+      const event = await Event.findByPk(idEvent);
+
+      if (!event) {
+         return res.status(404).json({
+            message: 'Evento no encontrado'
+         });
+      }
+
+      await event.update({
+         name,
+         isActive,
+         description,
+         eventDate,
+         eventTime,
+         organizer,
+         eventImage,
+         refundPolicy,
+      });
+
+      return res.status(200).json({
+         message: 'Evento actualizado con éxito',
+         event
+      });
+   } catch (error) {
+      console.error('error: ', error);
+      return res.status(500).json({
+         message: 'No se pudo actualizar el evento'
+      });
+   }
+};
+
+/**
+ * Eliminar un evento
+ */
+export const deleteEvent = async (req: Request, res: Response) => {
+   try {
+      const { idEvent } = req.params;
+
+      const event = await Event.findByPk(idEvent);
+
+      if (!event) {
+         return res.status(404).json({
+            message: 'Evento no encontrado'
+         });
+      }
+
+      await event.destroy();
+
+      return res.status(200).json({
+         message: 'Evento eliminado con éxito'
+      });
+   } catch (error) {
+      console.error('error: ', error);
+      return res.status(500).json({
+         message: 'No se pudo eliminar el evento'
+      });
+   }
+};
+
+
+
+
+
