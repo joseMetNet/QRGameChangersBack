@@ -120,8 +120,3 @@ export const deleteEvent = async (req: Request, res: Response) => {
       });
    }
 };
-
-
-
-
-
