@@ -9,6 +9,7 @@ import { Buyer } from "../models/buyer-model";
 import { CheckIn } from "../models/checkin-model";
 import Order from '../models/order-model';
 import EventLocation from '../models/eventLocation.model';
+import { sendCheckInEmailMailgun } from './sendNotifications.Controller';
 
 
 export const getProducts = async (req: Request, res: Response) => {
@@ -653,7 +654,8 @@ export const insertCheckInArrayObjects = async (req: Request, res: Response) => 
             used: false, token
          });
          await checkin.save();
-         await sendCheckInEmail(token, email, name);
+         //await sendCheckInEmail(token, email, name);
+         await sendCheckInEmailMailgun(token, email, name);
 
          tokens.push(token);
          checkins.push(checkin);
@@ -701,14 +703,14 @@ export const findCheckIn = async (req: Request, res: Response) => {
    }
 }
 
-const buildQrEmailBody = (token: string, name: string) => {
+export const buildQrEmailBody = (token: string, name: string) => {
    const body: string = `
    <!DOCTYPE html>
    <html>
    <head>
        <meta charset="UTF-8">
        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Tu acceso al concierto de Kris R</title>
+       <title>Tu acceso a Gospel Manizales</title>
        <style>
            body {
                font-family: Arial, sans-serif;
@@ -742,15 +744,14 @@ const buildQrEmailBody = (token: string, name: string) => {
    </head>
    <body>
        <div class="container">
-           <p><strong>📢 Tu acceso al concierto de Kris R está listo! Hola ${name},</strong></p>
-           <p>¡Tu registro para el concierto de Kris R se ha completado con éxito! 🎶✨</p>
+           <p><strong>📢 Tu acceso a Gospel Manizales está listo! Hola ${name},</strong></p>
+           <p>¡Tu registro para Gospel Manizales se ha completado con éxito! 🎶✨</p>
            <p>Para ingresar al evento, por favor presenta tu código QR en la entrada. Puedes verlo y mostrarlo en el siguiente enlace:</p>
-           <p>🔗 <a href=https://yourqrpass.com/#/qr?token=${token} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
+           <p>🔗 <a href=https://faceid-fr.azurewebsites.net/checkIn/qralcaldia?tokens=${token} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
            <p>⚠️ <span class="important">Importante:</span> Este código es válido solo una vez. No lo compartas con otras personas.</p>
            <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
-           <p>¡Nos vemos en el concierto! 🎤🔥</p>
-           <p><strong>Equipo de Kris R</strong><br>
-           Cel: 304 655-0971</p>
+           <p>¡Nos vemos en el Gospel Manizales! 🎤🔥</p>
+           <p><strong>Equipo de Gospel Manizales</strong><br>
        </div>
    </body>
    </html>`;
@@ -758,7 +759,7 @@ const buildQrEmailBody = (token: string, name: string) => {
 };
 
 
-const buildEmailBody = (idTransaction: string) => {
+export const buildEmailBody = (idTransaction: string) => {
    const body: string = `
    <!DOCTYPE html>
    <html>
