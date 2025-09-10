@@ -704,6 +704,9 @@ export const findCheckIn = async (req: Request, res: Response) => {
 }
 
 export const buildQrEmailBody = (token: string, name: string) => {
+   const jsonArray = JSON.stringify([token]); 
+   const once = encodeURIComponent(jsonArray);
+   const twice = encodeURIComponent(once);
    const body: string = `
    <!DOCTYPE html>
    <html>
@@ -747,7 +750,7 @@ export const buildQrEmailBody = (token: string, name: string) => {
            <p><strong>📢 Tu acceso a Gospel Manizales está listo! Hola ${name},</strong></p>
            <p>¡Tu registro para Gospel Manizales se ha completado con éxito! 🎶✨</p>
            <p>Para ingresar al evento, por favor presenta tu código QR en la entrada. Puedes verlo y mostrarlo en el siguiente enlace:</p>
-           <p>🔗 <a href=https://faceid-fr.azurewebsites.net/checkIn/qralcaldia?tokens=${token} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
+           <p>🔗 <a href=https://faceid-fr.azurewebsites.net/checkIn/qralcaldia?tokens=${twice} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
            <p>⚠️ <span class="important">Importante:</span> Este código es válido solo una vez. No lo compartas con otras personas.</p>
            <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
            <p>¡Nos vemos en el Gospel Manizales! 🎤🔥</p>
