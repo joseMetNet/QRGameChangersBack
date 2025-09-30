@@ -18,6 +18,7 @@ import checkinFaceIdRouter from '../routes/checkinfaceid.router';
 import bodyParser from 'body-parser';
 import truoraRoutes from '../routes/truora.router';
 import truoraRouter from '../routes/truora.router';
+import wompiRouter from '../routes/wompi.router';
 
 class Server {
     private app: Application;
@@ -75,6 +76,7 @@ class Server {
         this.app.use("/api", sexRouter)
         this.app.use("/api", checkinFaceIdRouter);
         this.app.use("/api", truoraRouter);
+        this.app.use("/api", wompiRouter);
     }
 
     listen() {
