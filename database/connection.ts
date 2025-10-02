@@ -7,7 +7,7 @@ import { sqlServer } from '../config/database-config';
 //     dialect: 'mssql',
 // });
 
-const db = new Sequelize(sqlServer.DB_DATABASE, sqlServer.DB_USERNAME, sqlServer.DB_PASSWORD, {
+export const db = new Sequelize(sqlServer.DB_DATABASE, sqlServer.DB_USERNAME, sqlServer.DB_PASSWORD, {
    host: sqlServer.DB_HOST,
    dialect: 'mssql',
    pool: {

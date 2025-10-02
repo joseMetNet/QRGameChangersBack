@@ -1,17 +1,17 @@
 import { Request, Response } from "express";
 import bcryptjs from "bcryptjs";
-import Usuario from "../models/usuarios";
+import  { User } from "../models/user-model";
 
 export const getUsuarios = async (req: Request, res: Response) => {
 
-    const usuarios = await Usuario.findAll();
+    const usuarios = await User.findAll();
     res.json(usuarios);
 }
 
 export const getUsuario = async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    const usuario = await Usuario.findByPk(id);
+    const usuario = await User.findByPk(id);
     if (usuario) {
         res.json(usuario)
     } else {
@@ -26,7 +26,7 @@ export const postUsuario = async (req: Request, res: Response) => {
 
     try {
         //correo dupicado
-        const emailExist = await Usuario.findOne({
+        const emailExist = await User.findOne({
             where: {
                 email: body.email,
             },
@@ -42,7 +42,7 @@ export const postUsuario = async (req: Request, res: Response) => {
         const salt = bcryptjs.genSaltSync();
         body.password = bcryptjs.hashSync(body.password, salt);
 
-        const usuario = Usuario.build(body);
+        const usuario = User.build(body);
         await usuario.save();
 
         res.json(usuario);
@@ -59,7 +59,7 @@ export const putUsuario = async(req: Request, res: Response) => {
     const { body } = req;
 
     try {
-        const userExist = await Usuario.findByPk(id);
+        const userExist = await User.findByPk(id);
         if (!userExist) {
           return res.status(404).json({
             msg: `No existe un usuario con el id ${id}`,
@@ -85,7 +85,7 @@ export const putUsuario = async(req: Request, res: Response) => {
 export const deleteUsuario = async(req: Request, res: Response) => {
     const { id } = req.params;
 
-    const user = await Usuario.findByPk(id);
+    const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({
         msg: `El usuario con el id: ${id} no existe!!!`,
@@ -93,7 +93,7 @@ export const deleteUsuario = async(req: Request, res: Response) => {
     }
   
     //await user.update({ active: false });
-     await user.destroy();
+    await user.destroy();
   
     res.status(200).json({
       msg: "Usuario eliminado exitosamente",
