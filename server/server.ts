@@ -23,8 +23,6 @@ import userMeLosTomo from '../routes/userMeLosTomos.router';
 import loginUser from '../routes/loginUser.router';
 
 import wompiRouter from '../routes/wompi.router';
-import userMeLosTomo from '../routes/userMeLosTomos.router';
-import loginUser from '../routes/loginUser.router';
 
 
 class Server {
