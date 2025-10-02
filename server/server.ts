@@ -22,6 +22,7 @@ import truoraRouter from '../routes/truora.router';
 import userMeLosTomo from '../routes/userMeLosTomos.router';
 import loginUser from '../routes/loginUser.router';
 
+import wompiRouter from '../routes/wompi.router';
 
 class Server {
     private app: Application;
@@ -81,6 +82,7 @@ class Server {
         this.app.use("/api", truoraRouter);
         this.app.use("/api", userMeLosTomo);
         this.app.use("/api", loginUser);
+        this.app.use("/api", wompiRouter);
     }
 
     listen() {
