@@ -84,8 +84,6 @@ class Server {
         this.app.use("/api", userMeLosTomo);
         this.app.use("/api", loginUser);
         this.app.use("/api", wompiRouter);
-        this.app.use("/api", userMeLosTomo);
-        this.app.use("/api", loginUser);
     }
 
     listen() {
