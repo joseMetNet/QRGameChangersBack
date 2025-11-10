@@ -24,6 +24,46 @@ export const getEvent = async (req: Request, res: Response) => {
       });
    }
 };
+
+/**
+ * Obtener un evento por ID
+ */
+export const getEventById = async (req: Request, res: Response) => {
+   try {
+      const { idEvent } = req.params;
+
+      const event = await Event.findByPk(idEvent, {
+         attributes: [
+            'idEvent',
+            'name',
+            'isActive',
+            'description',
+            'eventDate',
+            'eventTime',
+            'organizer',
+            'eventImage',
+            'refundPolicy'
+         ]
+      });
+
+      if (!event) {
+         return res.status(404).json({
+            message: 'Evento no encontrado'
+         });
+      }
+
+      return res.status(200).json({
+         message: 'Evento encontrado con éxito',
+         data: event
+      });
+   } catch (error) {
+      console.error('Error en getEventById:', error);
+      return res.status(500).json({
+         message: 'No se pudo obtener el evento'
+      });
+   }
+};
+
 /**
  * Crear un evento
  */

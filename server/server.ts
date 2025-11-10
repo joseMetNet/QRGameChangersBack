@@ -2,6 +2,7 @@ import { login } from './../controllers/login.controller';
 import express, { Application } from 'express';
 import cors from 'cors';
 
+
 import db from '../database/connection';
 import userRouter from '../routes/usuario';
 import authRouter from '../routes/auth';
