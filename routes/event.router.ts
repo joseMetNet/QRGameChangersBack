@@ -4,10 +4,11 @@ import { createEvent } from '../controllers/event.controller';
 import { updateEvent } from '../controllers/event.controller';
 import { deleteEvent } from '../controllers/event.controller';
 import { uploadEventImage } from "../controllers/eventImage.controller";
-
+import { getEventById } from '../controllers/event.controller';
 const eventRouter = Router();
 
 eventRouter.get('/event', getEvent)
+eventRouter.get('/getEvent/:idEvent', getEventById);
 eventRouter.post('/createEvent',createEvent)
 eventRouter.put('/updateEvent/:idEvent',updateEvent)
 eventRouter.delete('/deleteEvent/:idEvent',deleteEvent)
