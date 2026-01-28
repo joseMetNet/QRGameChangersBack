@@ -2,6 +2,8 @@ import { login } from './../controllers/login.controller';
 import express, { Application } from 'express';
 import cors from 'cors';
 
+import '../models/asociation';
+
 
 import db from '../database/connection';
 import userRouter from '../routes/usuario';
@@ -22,6 +24,7 @@ import truoraRoutes from '../routes/truora.router';
 import truoraRouter from '../routes/truora.router';
 import userMeLosTomo from '../routes/userMeLosTomos.router';
 import loginUser from '../routes/loginUser.router';
+import eventImageRouter from '../routes/eventImage.router';
 
 import wompiRouter from '../routes/wompi.router';
 
@@ -85,6 +88,7 @@ class Server {
         this.app.use("/api", userMeLosTomo);
         this.app.use("/api", loginUser);
         this.app.use("/api", wompiRouter);
+        this.app.use("/api", eventImageRouter);
     }
 
     listen() {
