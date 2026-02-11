@@ -106,77 +106,88 @@ export const getImagesByEvent = async (req: Request, res: Response) => {
         });
     }
 };
-
-
+// ------------------ UPDATE ------------------
 export const updateEventImage = [
     upload.single("image"),
     async (req: Request, res: Response) => {
         try {
-            const { idEventImage } = req.params;
             const file = req.file;
-
             if (!file) {
                 return res.status(400).json({ message: "No se envió imagen" });
             }
+
+
+            // Limpiar y convertir el idEventImage
+            const idEventImageRaw = req.params.idEventImage;
+            const idEventImage = Number(idEventImageRaw.trim());
+            if (isNaN(idEventImage)) {
+                return res.status(400).json({ message: "idEventImage inválido" });
+            }
+
 
             const image = await EventImage.findByPk(idEventImage);
             if (!image) {
                 return res.status(404).json({ message: "Imagen no encontrada" });
             }
 
+
             const uniqueName = `${Date.now()}-${Math.random()
                 .toString(36)
                 .substring(2)}-${file.originalname}`;
 
-            const blockBlobClient =
-                containerClient.getBlockBlobClient(uniqueName);
 
+            const blockBlobClient = containerClient.getBlockBlobClient(uniqueName);
             await blockBlobClient.uploadData(file.buffer, {
-                blobHTTPHeaders: {
-                    blobContentType: file.mimetype,
-                },
+                blobHTTPHeaders: { blobContentType: file.mimetype },
             });
+
 
             image.imageUrl = blockBlobClient.url;
             await image.save();
+
 
             return res.status(200).json({
                 message: "Imagen actualizada",
                 image,
             });
 
+
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({
-                message: "Error al actualizar imagen",
-            });
+            console.error("Error al actualizar imagen:", error);
+            return res.status(500).json({ message: "Error interno al actualizar imagen" });
         }
     },
 ];
+
+
+// ------------------ DELETE ------------------
 export const deleteEventImage = async (req: Request, res: Response) => {
     try {
-        const { idEventImage } = req.params;
+        // Limpiar y convertir el idEventImage
+        const idEventImageRaw = req.params.idEventImage;
+        const idEventImage = Number(idEventImageRaw.trim());
+        if (isNaN(idEventImage)) {
+            return res.status(400).json({ message: "idEventImage inválido" });
+        }
+
 
         const image = await EventImage.findByPk(idEventImage);
-
         if (!image) {
-            return res.status(404).json({
-                message: "Imagen no encontrada",
-            });
+            return res.status(404).json({ message: "Imagen no encontrada" });
         }
+
 
         await image.destroy();
 
-        return res.status(200).json({
-            message: "Imagen eliminada correctamente",
-        });
+
+        return res.status(200).json({ message: "Imagen eliminada correctamente" });
+
 
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            message: "Error al eliminar imagen",
-        });
+        console.error("Error al eliminar imagen:", error);
+        return res.status(500).json({ message: "Error interno al eliminar imagen" });
     }
 };
+
 
 

@@ -1,5 +1,6 @@
 import Event from './event-model';
 import EventImage from './eventImage-model';
+import City from './city-model';
 
 // Un evento tiene muchas imágenes
 Event.hasMany(EventImage, {
@@ -11,6 +12,15 @@ EventImage.belongsTo(Event, {
     foreignKey: 'idEvent',
 });
 
-export{
-    Event, EventImage
+// 👇 ESTO DEBE EJECUTARSE DIRECTO
+Event.belongsTo(City, {
+    foreignKey: 'idCity',
+});
+
+City.hasMany(Event, {
+    foreignKey: 'idCity',
+});
+
+export {
+    Event, EventImage, City
 }

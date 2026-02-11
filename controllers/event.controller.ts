@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Event from '../models/event-model';
 import { BlobServiceClient } from "@azure/storage-blob";
 import multer from "multer";
+import City from '../models/city-model';
 
 const upload = multer({
    storage: multer.memoryStorage(),
@@ -22,7 +23,7 @@ const containerClient =
 
 
 /**
- * Obtener todos los eventos
+ * Obtener todos lo  s eventos
  */
 export const getEvents = async (req: Request, res: Response) => {
    try {
@@ -34,10 +35,17 @@ export const getEvents = async (req: Request, res: Response) => {
             'description',
             'eventDate',
             'eventTime',
+            'idCity',
             'organizer',
             'eventImage',
             'refundPolicy'
          ],
+         include: [
+            {
+               model: City,
+               attributes: ['idCity','City','idDepartment'] // 👈 nombre de la ciudad
+            }
+         ]
       });
 
       if (events.length === 0) {
@@ -73,9 +81,16 @@ export const getEventById = async (req: Request, res: Response) => {
             'description',
             'eventDate',
             'eventTime',
+            'idCity',
             'organizer',
             'eventImage',
             'refundPolicy'
+         ],
+         include: [
+            {
+               model: City,
+               attributes: ['idCity','City','idDepartment'] // 👈 nombre de la ciudad
+            }
          ]
       });
 
@@ -102,7 +117,7 @@ export const getEventById = async (req: Request, res: Response) => {
  */
 export const createEvent = async (req: Request, res: Response) => {
    try {
-      const { name, isActive, description, eventDate, eventTime, organizer, eventImage, refundPolicy } = req.body;
+      const { name, isActive, description, eventDate, eventTime, idCity, organizer, eventImage, refundPolicy } = req.body;
 
       const newEvent = await Event.create({
          name,
@@ -110,6 +125,7 @@ export const createEvent = async (req: Request, res: Response) => {
          description,
          eventDate,
          eventTime,
+         idCity,
          organizer,
          eventImage,
          refundPolicy,
@@ -133,7 +149,7 @@ export const createEvent = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
    try {
       const { idEvent } = req.params;
-      const { name, isActive, description, eventDate, eventTime, organizer, eventImage, refundPolicy } = req.body;
+      const { name, isActive, description, eventDate, eventTime,idCity, organizer, eventImage, refundPolicy } = req.body;
 
       const event = await Event.findByPk(idEvent);
 
@@ -149,6 +165,7 @@ export const updateEvent = async (req: Request, res: Response) => {
          description,
          eventDate,
          eventTime,
+         idCity,
          organizer,
          eventImage,
          refundPolicy,
@@ -196,55 +213,54 @@ export const deleteEvent = async (req: Request, res: Response) => {
 /**
  * Subir / actualizar imagen de portada del evento
  */
-export const uploadEventCover = [
-   upload.single("image"),
-   async (req: Request, res: Response) => {
-      try {
-         const { idEvent } = req.params;
-         const file = req.file;
+export const uploadEventCover = async (req: Request, res: Response) => {
+   console.log("FILE:", req.file);
+   console.log("PARAMS:", req.params);
 
-         if (!file) {
-            return res.status(400).json({
-               message: "No se envió ninguna imagen",
-            });
-         }
+   try {
+      const { idEvent } = req.params;
+      const file = req.file;
 
-         const event = await Event.findByPk(idEvent);
-
-         if (!event) {
-            return res.status(404).json({
-               message: "Evento no encontrado",
-            });
-         }
-
-         const fileName = `cover-${Date.now()}-${Math.random()
-            .toString(36)
-            .substring(2)}-${file.originalname}`;
-
-         const blockBlobClient =
-            containerClient.getBlockBlobClient(fileName);
-
-         await blockBlobClient.uploadData(file.buffer, {
-            blobHTTPHeaders: {
-               blobContentType: file.mimetype,
-            },
-         });
-
-         // Guardar URL en la columna eventImage
-         event.eventImage = blockBlobClient.url;
-         await event.save();
-
-         return res.status(200).json({
-            message: "Imagen de portada actualizada con éxito",
-            eventImage: event.eventImage,
-         });
-
-      } catch (error) {
-         console.error("Error en uploadEventCover:", error);
-         return res.status(500).json({
-            message: "Error al subir la imagen de portada",
+      if (!file) {
+         return res.status(400).json({
+            message: "No se envió ninguna imagen",
          });
       }
-   },
-];
+
+      const event = await Event.findByPk(idEvent);
+
+      if (!event) {
+         return res.status(404).json({
+            message: "Evento no encontrado",
+         });
+      }
+
+      const fileName = `cover-${idEvent}-${Date.now()}-${file.originalname}`;
+
+      const blockBlobClient =
+         containerClient.getBlockBlobClient(fileName);
+
+      await blockBlobClient.uploadData(file.buffer, {
+         blobHTTPHeaders: {
+            blobContentType: file.mimetype,
+         },
+      });
+
+      event.eventImage = blockBlobClient.url;
+      await event.save();
+
+      return res.status(200).json({
+         ok: true,
+         message: "Imagen de portada actualizada con éxito",
+         eventImage: event.eventImage,
+      });
+
+   } catch (error) {
+      console.error("Error en uploadEventCover:", error);
+      return res.status(500).json({
+         message: "Error al subir la imagen de portada",
+      });
+   }
+};
+
 

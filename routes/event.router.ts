@@ -12,6 +12,6 @@
     eventRouter.post('/createEvent',createEvent)
     eventRouter.put('/updateEvent/:idEvent',updateEvent)
     eventRouter.delete('/deleteEvent/:idEvent',deleteEvent)
-    eventRouter.post("/uploadEventCover/:idEvent", uploadEventCover);
+    //eventRouter.post("/uploadEventCover/:idEvent", uploadEventCover);
 
     export default eventRouter;

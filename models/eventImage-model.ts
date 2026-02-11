@@ -26,7 +26,7 @@ EventImage.init(
     {
         sequelize: db,
         modelName: 'TB_EventImage',
-        timestamps: true,
+        timestamps: false,
         freezeTableName: true
     }
 );

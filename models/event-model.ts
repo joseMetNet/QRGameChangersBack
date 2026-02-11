@@ -6,9 +6,10 @@ interface EventAttributes {
     idEvent: number;
     name: string;
     isActive: boolean;
-    description:string;
-    eventDate:Date;
-    eventTime: string;     // Sequelize lo manejará como string (HH:mm:ss)
+    description: string;
+    eventDate: Date;
+    eventTime: string;
+    idCity: number;
     organizer: string;
     eventImage: string;
     refundPolicy: string;
@@ -25,6 +26,7 @@ class Event extends Model<EventAttributes, EventCreationAttributes> implements E
     public description!: string;
     public eventDate!: Date;
     public eventTime!: string;
+    public idCity!: number;
     public organizer!: string;
     public eventImage!: string;
     public refundPolicy!: string;
@@ -46,33 +48,37 @@ Event.init(
             allowNull: false
         },
         description: {
-        type: DataTypes.STRING(500),
-        allowNull: false,
-        defaultValue: 'No description'
+            type: DataTypes.STRING(500),
+            allowNull: false,
+            defaultValue: 'No description'
         },
         eventDate: {
-        type: DataTypes.DATEONLY,
-        allowNull: false
+            type: DataTypes.DATEONLY,
+            allowNull: false
         },
         eventTime: {
-        type: DataTypes.TIME,
-        allowNull: false,
-        defaultValue: '00:00:00'
+            type: DataTypes.TIME,
+            allowNull: false,
+            defaultValue: '00:00:00'
+        },
+        idCity: {
+            type: DataTypes.INTEGER,
+            allowNull: false
         },
         organizer: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        defaultValue: 'Undefined'
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            defaultValue: 'Undefined'
         },
         eventImage: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        defaultValue: 'no-image.png'
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            defaultValue: 'no-image.png'
         },
         refundPolicy: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        defaultValue: 'No refund policy'
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            defaultValue: 'No refund policy'
         }
     },
     {
