@@ -6,12 +6,14 @@ class Config {
   private readonly siigoUsername: string;
   private readonly siigoAccessKey: string;
   private readonly siigoPartnerId: string;
+  private readonly mailgunApiKey: string;
 
   constructor() {
     // Siigo configuration
     this.siigoUsername = this.getEnvVariable("SIIGO_USERNAME");
     this.siigoAccessKey = this.getEnvVariable("SIIGO_ACCESS_KEY");
     this.siigoPartnerId = this.getEnvVariable("SIIGO_PARTNER_ID");
+    this.mailgunApiKey = this.getEnvVariable("MAILGUN_API_KEY");
   }
 
   private getEnvVariable(name: string): string {
@@ -33,6 +35,10 @@ class Config {
 
   get SIIGO_PARTNER_ID(): string {
     return this.siigoPartnerId;
+  }
+
+  get MAILGUN_API_KEY(): string {
+    return this.mailgunApiKey;
   }
 }
 

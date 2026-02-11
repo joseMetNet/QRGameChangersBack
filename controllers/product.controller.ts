@@ -9,6 +9,7 @@ import { Buyer } from "../models/buyer-model";
 import { CheckIn } from "../models/checkin-model";
 import Order from '../models/order-model';
 import EventLocation from '../models/eventLocation.model';
+import { sendCheckInEmailMailgun } from './sendNotifications.Controller';
 
 
 export const getProducts = async (req: Request, res: Response) => {
@@ -97,7 +98,7 @@ export const getProductByTicket = async (req: Request, res: Response) => {
 
 export const getProductByTicketBuyer = async (req: Request, res: Response) => {
    try {
-      const { eTicket} = req.body;
+      const { eTicket } = req.body;
 
       const checkIn: any = await CheckIn.findOne({
          where: {
@@ -119,7 +120,7 @@ export const getProductByTicketBuyer = async (req: Request, res: Response) => {
          name_product: checkIn.description
       };
 
-      if(checkIn.used) {
+      if (checkIn.used) {
          return res.status(400).json({
             message: `El usuario ya ingresó`,
             user: null
@@ -293,124 +294,124 @@ export const insertBuyer = async (req: Request, res: Response) => {
 // };
 
 export const insertOrderAndProducts = async (req: Request, res: Response) => {
-  const transaction = await db.transaction();
+   const transaction = await db.transaction();
 
-  try {
-    const {
-      nombres,
-      apellidos,
-      telefono,
-      email,
-      cedula,
-      direccion,
-      idCity,
-      idDepartment,
-      idEvent,
-      localities,
-      fechaHora,
-      idMotivo,
-      observacionesSalud,
-      comentarios,
-      fechaCumpleanos,
-      idCountry,
-      edad,
-      idSexo
-    } = req.body;
+   try {
+      const {
+         nombres,
+         apellidos,
+         telefono,
+         email,
+         cedula,
+         direccion,
+         idCity,
+         idDepartment,
+         idEvent,
+         localities,
+         fechaHora,
+         idMotivo,
+         observacionesSalud,
+         comentarios,
+         fechaCumpleanos,
+         idCountry,
+         edad,
+         idSexo
+      } = req.body;
 
 
-    let parsedLocalities;
-    try {
-      parsedLocalities = typeof localities === 'string' ? JSON.parse(localities) : localities;
-    } catch (e) {
-      return res.status(400).json({ message: 'El formato de localities no es válido' });
-    }
-
-    if (!Array.isArray(parsedLocalities) || parsedLocalities.length === 0) {
-      return res.status(400).json({ message: 'No hay localidades seleccionadas' });
-    }
-
-    const eventLocationIds: number[] = parsedLocalities.map(
-      (loc: { idEventLocation: number }) => loc.idEventLocation
-    );
-
-    const locations = await EventLocation.findAll({
-      where: { idEventLocation: eventLocationIds }
-    });
-
-    const locationPriceMap: { [key: number]: number } = {};
-    locations.forEach((loc: any) => {
-      locationPriceMap[loc.idEventLocation] = Number(loc.price);
-    });
-
-    const total = parsedLocalities.reduce(
-      (acc: number, loc: { idEventLocation: number; quantity: number }) => {
-        const price = locationPriceMap[loc.idEventLocation] || 0;
-        return acc + loc.quantity * price;
-      },
-      0
-    );
-
-    const orderData: any = {
-      nombres,
-      apellidos,
-      telefono,
-      email,
-      cedula,
-      direccion,
-      idCity,
-      idDepartment,
-      total
-    };
-
-    if (fechaHora) orderData.fechaHora = fechaHora;
-    if (idMotivo) orderData.idMotivo = idMotivo;
-    if (observacionesSalud) orderData.observacionesSalud = observacionesSalud;
-    if (comentarios) orderData.comentarios = comentarios;
-    if (fechaCumpleanos) orderData.fechaCumpleanos = fechaCumpleanos;
-    if (idCountry) orderData.idCountry = idCountry;
-    if (edad) orderData.edad = edad;
-    if (idSexo) orderData.idSexo = idSexo;
-
-    const order: any = await Order.create(orderData, { transaction });
-
-    const productsToInsert = [];
-
-    for (const loc of parsedLocalities) {
-      const { idEventLocation, quantity } = loc;
-      const price = locationPriceMap[idEventLocation] || 0;
-
-      for (let i = 0; i < quantity; i++) {
-        productsToInsert.push({
-          idOrder: order.idOrder,
-          idEvent,
-          idEventLocation,
-          name_product: `Entrada Evento ${idEvent}`,
-          lot: `L${idEventLocation}`,
-          quantity: 1,
-          buyer_name: `${nombres} ${apellidos}`,
-          buyer_email: email,
-          lot_price: price
-        });
+      let parsedLocalities;
+      try {
+         parsedLocalities = typeof localities === 'string' ? JSON.parse(localities) : localities;
+      } catch (e) {
+         return res.status(400).json({ message: 'El formato de localities no es válido' });
       }
-    }
 
-    await Product.bulkCreate(productsToInsert, { transaction });
-    await transaction.commit();
+      if (!Array.isArray(parsedLocalities) || parsedLocalities.length === 0) {
+         return res.status(400).json({ message: 'No hay localidades seleccionadas' });
+      }
 
-    return res.status(200).json({
-      message: 'Orden y productos registrados exitosamente',
-      entries: productsToInsert.length,
-      total,
-      orderId: order.idOrder
-    });
-  } catch (error) {
-    await transaction.rollback();
-    console.error('Error al registrar la orden:', error);
-    return res.status(500).json({
-      message: 'Error al registrar la orden',
-      error
-    });
-  }
+      const eventLocationIds: number[] = parsedLocalities.map(
+         (loc: { idEventLocation: number }) => loc.idEventLocation
+      );
+
+      const locations = await EventLocation.findAll({
+         where: { idEventLocation: eventLocationIds }
+      });
+
+      const locationPriceMap: { [key: number]: number } = {};
+      locations.forEach((loc: any) => {
+         locationPriceMap[loc.idEventLocation] = Number(loc.price);
+      });
+
+      const total = parsedLocalities.reduce(
+         (acc: number, loc: { idEventLocation: number; quantity: number }) => {
+            const price = locationPriceMap[loc.idEventLocation] || 0;
+            return acc + loc.quantity * price;
+         },
+         0
+      );
+
+      const orderData: any = {
+         nombres,
+         apellidos,
+         telefono,
+         email,
+         cedula,
+         direccion,
+         idCity,
+         idDepartment,
+         total
+      };
+
+      if (fechaHora) orderData.fechaHora = fechaHora;
+      if (idMotivo) orderData.idMotivo = idMotivo;
+      if (observacionesSalud) orderData.observacionesSalud = observacionesSalud;
+      if (comentarios) orderData.comentarios = comentarios;
+      if (fechaCumpleanos) orderData.fechaCumpleanos = fechaCumpleanos;
+      if (idCountry) orderData.idCountry = idCountry;
+      if (edad) orderData.edad = edad;
+      if (idSexo) orderData.idSexo = idSexo;
+
+      const order: any = await Order.create(orderData, { transaction });
+
+      const productsToInsert = [];
+
+      for (const loc of parsedLocalities) {
+         const { idEventLocation, quantity } = loc;
+         const price = locationPriceMap[idEventLocation] || 0;
+
+         for (let i = 0; i < quantity; i++) {
+            productsToInsert.push({
+               idOrder: order.idOrder,
+               idEvent,
+               idEventLocation,
+               name_product: `Entrada Evento ${idEvent}`,
+               lot: `L${idEventLocation}`,
+               quantity: 1,
+               buyer_name: `${nombres} ${apellidos}`,
+               buyer_email: email,
+               lot_price: price
+            });
+         }
+      }
+
+      await Product.bulkCreate(productsToInsert, { transaction });
+      await transaction.commit();
+
+      return res.status(200).json({
+         message: 'Orden y productos registrados exitosamente',
+         entries: productsToInsert.length,
+         total,
+         orderId: order.idOrder
+      });
+   } catch (error) {
+      await transaction.rollback();
+      console.error('Error al registrar la orden:', error);
+      return res.status(500).json({
+         message: 'Error al registrar la orden',
+         error
+      });
+   }
 };
 
 export const sendVerificationEmail = async (code: string, email: string) => {
@@ -582,6 +583,95 @@ export const insertCheckIn = async (req: Request, res: Response) => {
    }
 }
 
+//esta con la opción de recibir un array de objetos para registrar varios checkins a la vez pero validando cada uno con su idTransaction
+export const insertCheckInSeconTEst = async (req: Request, res: Response) => {
+   try {
+      const people = Array.isArray(req.body) ? req.body : [req.body];
+      const tokens = [];
+      const checkins = [];
+
+      for (const person of people) {
+         const { name, document, phone, email, idTransaction } = person;
+         if (!name || !document || !phone || !email || !idTransaction) {
+            return res.status(400).json({
+               message: 'Por favor complete todos los campos'
+            });
+         }
+
+         const buyer = await Buyer.findOne({ where: { idTransaction } });
+         if (!buyer) {
+            return res.status(400).json({ message: 'El código no existe' });
+         }
+         if (buyer.orderStatus) {
+            return res.status(400).json({ message: 'El código ya fue utilizado' });
+         }
+
+         const token = crypto.randomUUID();
+         const checkin = CheckIn.build({
+            name, document, phone, email,
+            description: buyer.description ?? '',
+            used: false, token
+         });
+         await checkin.save();
+         buyer.orderStatus = true;
+         await buyer.save();
+         await sendCheckInEmail(token, email, name);
+
+         tokens.push(token);
+         checkins.push(checkin);
+      }
+
+      return res.status(200).json({
+         checkin: { tokens, checkins }
+      });
+   } catch (error) {
+      console.log('error: ', error);
+      return res.status(500).json({
+         message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+      });
+   }
+};
+
+//Recibe un array de objetos para registrar varios checkins a la vez sin validar idTransaction
+export const insertCheckInArrayObjects = async (req: Request, res: Response) => {
+   try {
+      const people = Array.isArray(req.body) ? req.body : [req.body];
+      const tokens = [];
+      const checkins = [];
+
+      for (const person of people) {
+         const { idEvent, idEventLocation, name, document, phone, email } = person;
+         if (!idEvent || !idEventLocation || !name || !document || !phone || !email) {
+            return res.status(400).json({
+               message: 'Por favor complete todos los campos'
+            });
+         }
+
+         const token = crypto.randomUUID();
+         const checkin = CheckIn.build({
+            idEvent, idEventLocation, name, document, phone, email,
+            description: '', // o cualquier otro campo por defecto
+            used: false, token
+         });
+         await checkin.save();
+         //await sendCheckInEmail(token, email, name);
+         await sendCheckInEmailMailgun(token, email, name);
+
+         tokens.push(token);
+         checkins.push(checkin);
+      }
+
+      return res.status(200).json({
+         checkin: { tokens, checkins }
+      });
+   } catch (error) {
+      console.log('error: ', error);
+      return res.status(500).json({
+         message: 'Lo sentimos hubo un error, intente nuevamente o contacte con el administrador'
+      });
+   }
+};
+
 export const findCheckIn = async (req: Request, res: Response) => {
    try {
       const { token } = req.query;
@@ -613,14 +703,17 @@ export const findCheckIn = async (req: Request, res: Response) => {
    }
 }
 
-const buildQrEmailBody = (token: string, name: string) => {
+export const buildQrEmailBody = (token: string, name: string) => {
+   const jsonArray = JSON.stringify([token]); 
+   const once = encodeURIComponent(jsonArray);
+   const twice = encodeURIComponent(once);
    const body: string = `
    <!DOCTYPE html>
    <html>
    <head>
        <meta charset="UTF-8">
        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Tu acceso al concierto de Kris R</title>
+       <title>Tu acceso a Gospel Manizales</title>
        <style>
            body {
                font-family: Arial, sans-serif;
@@ -654,15 +747,14 @@ const buildQrEmailBody = (token: string, name: string) => {
    </head>
    <body>
        <div class="container">
-           <p><strong>📢 Tu acceso al concierto de Kris R está listo! Hola ${name},</strong></p>
-           <p>¡Tu registro para el concierto de Kris R se ha completado con éxito! 🎶✨</p>
+           <p><strong>📢 Tu acceso a Gospel Manizales está listo! Hola ${name},</strong></p>
+           <p>¡Tu registro para Gospel Manizales se ha completado con éxito! 🎶✨</p>
            <p>Para ingresar al evento, por favor presenta tu código QR en la entrada. Puedes verlo y mostrarlo en el siguiente enlace:</p>
-           <p>🔗 <a href=https://yourqrpass.com/#/qr?token=${token} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
+           <p>🔗 <a href=https://faceid-fr.azurewebsites.net/checkIn/qralcaldia?tokens=${twice} class="qr-link">[Haz clic aquí para ver tu código QR]</a></p>
            <p>⚠️ <span class="important">Importante:</span> Este código es válido solo una vez. No lo compartas con otras personas.</p>
            <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
-           <p>¡Nos vemos en el concierto! 🎤🔥</p>
-           <p><strong>Equipo de Kris R</strong><br>
-           Cel: 304 655-0971</p>
+           <p>¡Nos vemos en el Gospel Manizales! 🎤🔥</p>
+           <p><strong>Equipo de Gospel Manizales</strong><br>
        </div>
    </body>
    </html>`;
@@ -670,7 +762,7 @@ const buildQrEmailBody = (token: string, name: string) => {
 };
 
 
-const buildEmailBody = (idTransaction: string) => {
+export const buildEmailBody = (idTransaction: string) => {
    const body: string = `
    <!DOCTYPE html>
    <html>

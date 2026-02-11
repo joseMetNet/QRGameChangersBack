@@ -1,12 +1,37 @@
-import { createHash } from 'crypto';
-import { QueryTypes, Sequelize } from 'sequelize';
+import { QueryTypes } from 'sequelize';
 import { IGlobalPayWebhookService, GlobalPayWebhook } from './GlobalPayDTO';
 import { SiigoDAL } from "../SiigoNode/SiigoDAL";
 import db from "../../../database/connection";
+import Mailgun from "mailgun.js";
+import FormData from "form-data";
+import { EnvConfig } from "../../../config/config";
 
 interface OrderDB {
     Reference: string;
     Quantity: string;
+}
+
+interface OrderQueryResult {
+    idOrder: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    documentNumber: string;
+    phone: string;
+    address: string;
+    city: string;
+    quantity: number;
+    city_code: string;
+    state_code: string;
+    department: string;
+    reference: string;
+}
+
+interface ProcessedItem {
+    code: string;
+    quantity: number;
+    price: number;
+    discount: number;
 }
 
 interface Item {
@@ -47,232 +72,432 @@ class Logger {
 export class GlobalPayWebhookService implements IGlobalPayWebhookService {
     private readonly appKey: string;
     private readonly siigoService: SiigoDAL;
+    private readonly mailgun: ReturnType<Mailgun['client']>;
+    private readonly fromDomain: string;
+    private readonly fromEmail: string;
 
     constructor(siigoService: SiigoDAL) {
         this.appKey = 'OWJjYmU3YjAtM2FmOS00ZDI5LWFiNmQtNWY2MmZkNDI2MzdmOjRzcnpZfjIlY1c=';
         this.siigoService = siigoService;
-    }
 
-    public verifyStoken(payload: GlobalPayWebhook): boolean {
-        if (!payload?.transaction || !payload?.user) {
-            return false;
-        }
-
-        const concatenated = `${payload.transaction.id}${payload.transaction.application_code}${payload.user.id}${this.appKey}`;
-        const stokenGenerated = createHash('md5')
-            .update(concatenated)
-            .digest('hex');
-
-        return stokenGenerated === payload.transaction.stoken?.toLowerCase();
+        // Initialize Mailgun
+        const mailgunClient = new Mailgun(FormData);
+        this.mailgun = mailgunClient.client({
+            username: "api",
+            key: EnvConfig.MAILGUN_API_KEY,
+        });
+        this.fromDomain = "sandbox6bc14d54c50844d98489030220066478.mailgun.org";
+        this.fromEmail = `GlobalPay Webhook <postmaster@${this.fromDomain}>`;
     }
 
     public async processWebhook(payload: GlobalPayWebhook): Promise<void> {
         try {
-            if (payload.transaction.status === "1") {
-                Logger.info('Transaction successful, creating invoice', {
-                    transactionId: payload.transaction.id,
-                    reference: payload.transaction.dev_reference
-                });
-
-                const response = await this.createInvoice(payload.transaction.dev_reference);
-
-                Logger.success('Invoice created successfully', {
-                    orderId: payload.transaction.dev_reference,
-                    siigoResponse: response
-                });
-            } else {
-                Logger.info('Transaction not successful, skipping invoice creation', {
-                    status: payload.transaction.status,
-                    transactionId: payload.transaction.id
-                });
+            // Validate payload structure
+            if (!payload?.query) {
+                throw new Error('Invalid webhook payload: missing query object');
             }
-        } catch (error) {
-            Logger.error('Error processing webhook', {
-                error: error,
-                payload: payload
-            });
-            throw error;
+
+            const { query } = payload;
+
+            if (query.x_respuesta === "Aceptada") {
+                Logger.info('Transaction successful, creating invoice', {
+                    response: query.x_response_reason_text,
+                    amount: query.x_amount,
+                    transactionId: query.x_ref_payco
+                });
+
+                // Extract and validate order ID
+                const orderId = this.extractOrderId(query.x_description);
+                if (!orderId) {
+                    throw new Error(`Order ID not found in description: ${query.x_description}`);
+                }
+
+                const response = await this.createInvoice(orderId);
+
+                // Send success notification
+                await this.sendSuccessEmail(JSON.stringify(response), orderId, query.x_ref_payco);
+
+            } else {
+                Logger.error('Transaction failed', {
+                    response: query.x_respuesta,
+                    reason: query.x_response_reason_text,
+                    amount: query.x_amount
+                });
+
+            }
+        } catch (err: any) {
+            Logger.error('Error processing webhook', err);
+
+            // Send error notification but don't let email failures mask the original error
+            try {
+                await this.sendErrorEmail(err, payload);
+            } catch (emailError) {
+                Logger.error('Failed to send error notification email', emailError);
+            }
+
+            // Re-throw the original error for proper error handling upstream
+            throw err;
         }
+    }
+
+    private extractOrderId(description: string): string | null {
+        Logger.info('Extracting order ID from description', { description });
+        if (!description) {
+            return null;
+        }
+
+        const parts = description.split('#');
+        if (parts.length < 2) {
+            return null;
+        }
+
+        const orderId = parts[1]?.trim();
+        return orderId || null;
     }
 
     private async createInvoice(idOrder: string): Promise<string> {
         try {
             Logger.info(`Starting invoice creation for order ID: ${idOrder}`);
 
-            let orderList: OrderDB[] = [];
-            let city = '';
-            let department = '';
-            let address = '';
-            let phone = '';
-            let mail = '';
-            let name = '';
-            let lastName = '';
-            let city_code = '';
-            let state_code = '';
-            let shippingCost = '';
-            let categoryShipping = '';
-            let numberDocument = '';
+            // Validate order ID
+            const orderIdNum = parseInt(idOrder);
+            if (isNaN(orderIdNum)) {
+                throw new Error(`Invalid order ID format: ${idOrder}`);
+            }
+
+            // Initialize variables with proper typing
+            const orderData = {
+                orderList: [] as OrderDB[],
+                city: '',
+                department: '',
+                address: '',
+                phone: '',
+                mail: '',
+                name: '',
+                lastName: '',
+                city_code: '',
+                state_code: '',
+                numberDocument: ''
+            };
 
             const query = `
-                        SELECT DISTINCT tbo.idOrder,
-                tbo.nombres firstName,
-                tbo.apellidos lastName,
+            SELECT
+                tbo.idOrder,
+                tbo.nombres as firstName,
+                tbo.apellidos as lastName,
                 tbo.email,
-                            tbo.cedula as documentNumber,
+                tbo.cedula as documentNumber,
                 tbo.telefono as phone,
                 tbo.direccion as address,
                 tbc.city,
-                tbp.quantity as quantity,
+                SUM(tbp.quantity) as quantity,
                 tbc.code as city_code,
                 tbd.code as state_code,
                 tbd.nameDepartment as department,
                 tbel.reference
-FROM TB_ORDER AS tbo
-         LEFT JOIN productos AS tbp ON tbp.idOrder = tbo.idOrder
-         LEFT JOIN TB_EventLocation as tbel ON tbel.idEventLocation=tbp.idEventLocation
-         LEFT JOIN TB_City AS tbc ON tbc.idCity = tbo.idCity
-         LEFT JOIN TB_Department AS tbd ON tbd.idDepartment = tbo.idDepartment
-            WHERE tbo.idOrder = :idOrder;
+            FROM TB_ORDER AS tbo
+            LEFT JOIN productos AS tbp ON tbp.idOrder = tbo.idOrder
+            LEFT JOIN TB_EventLocation as tbel ON tbel.idEventLocation=tbp.idEventLocation
+            LEFT JOIN TB_City AS tbc ON tbc.idCity = tbo.idCity
+            LEFT JOIN TB_Department AS tbd ON tbd.idDepartment = tbo.idDepartment
+            WHERE tbo.idOrder = :idOrder
+            GROUP BY tbo.idOrder, tbo.nombres, tbo.apellidos, tbo.email, tbo.cedula, tbo.telefono, tbo.direccion, tbc.city, tbc.code, tbd.code, tbd.nameDepartment, tbel.reference;
             `;
 
             const results = await db.query(query, {
-                replacements: { idOrder: parseInt(idOrder) },
+                replacements: { idOrder: orderIdNum },
                 type: QueryTypes.SELECT
-            }) as any[];
+            }) as OrderQueryResult[];
 
-
-            if (results && results.length > 0) {
-                results.forEach((row: any) => {
-                    orderList.push({
-                        Reference: row.reference,
-                        Quantity: row.quantity
-                    });
-
-                    if (!city) city = row.city;
-                    if (!department) department = row.department;
-                    if (!address) address = row.address;
-                    if (!phone) phone = row.phone;
-                    if (!mail) mail = row.email;
-                    if (!name) name = row.firstName;
-                    if (!lastName) lastName = row.lastName;
-                    if (!state_code) state_code = row.state_code;
-                    if (!city_code) city_code = row.city_code;
-                    if (!shippingCost) shippingCost = row.shippingCost;
-                    if (!categoryShipping) categoryShipping = row.categoryShipping;
-                    if (!numberDocument) numberDocument = row.documentNumber;
-                });
+            // Validate that we found the order
+            if (!results || results.length === 0) {
+                throw new Error(`Order not found with ID: ${idOrder}`);
             }
 
-            const processOrder = async (orderDb: OrderDB) => {
-                try {
-                    Logger.info(`Processing product with reference: ${orderDb.Reference}`);
-                    const productResult = await this.siigoService.findSiigoProductAsync(orderDb.Reference);
-                    const quantity = orderDb.Quantity ? parseFloat(orderDb.Quantity) : 0;
+            // Process the results and populate order data
+            this.populateOrderData(results, orderData);
 
-                    if (!productResult.results || productResult.results.length === 0) {
-                        Logger.error(`No product found for reference: ${orderDb.Reference}`);
-                        return [];
-                    }
+            // Validate required fields
+            this.validateOrderData(orderData);
 
-                    return productResult.results.map(p => {
-                        const basePrice = p.prices[0].price_list[0].value;
-                        const taxRate = p.taxes[0].percentage / 100;
-                        const priceP = Math.round((basePrice / (1 + taxRate)) * 100) / 100;
+            // Process each product in the order
+            const items = await this.processOrderItems(orderData.orderList);
 
-                        console.log(`price $${basePrice} with tax multiplier ${taxRate}`);
+            if (items.length === 0) {
+                throw new Error('No valid items found for invoice creation');
+            }
 
-                        return {
-                            code: p.code,
-                            quantity: quantity,
-                            price: priceP,
-                            discount: 0,
-                            //taxId: p.taxes[0].id,
-                            //percentage: taxRate,
-                            //taxes: p.taxes.map(tax => ({ id: tax.id }))
-                        };
-                    });
-                } catch (error) {
-                    Logger.error(`Error processing order ${orderDb.Reference}:`, error);
-                    return [];
-                }
-            };
+            // Get customer address information
+            const [siigoAddressExist, siigoAddress] = await this.siigoService.findSiigoClient(orderData.numberDocument);
 
-            const itemGroups = await Promise.all(orderList.map(processOrder));
-            const items = itemGroups
-                .flat()
-                .filter(item => item.quantity > 0);
-
-            const [siigoAddressExist, siigoAddress] = await this.siigoService.findSiigoClient(numberDocument);
-
-            Logger.info('Debug - Siigo client lookup result', {
-                numberDocument,
+            Logger.info('Customer address lookup result', {
+                numberDocument: orderData.numberDocument,
                 siigoAddressExist,
-                siigoAddress: siigoAddress
+                hasExistingAddress: !!siigoAddress
             });
 
-            const stateCode = siigoAddressExist ? siigoAddress?.city.state_code : String(state_code).padStart(2, '0');
-            const stateName = siigoAddressExist ? siigoAddress?.city.state_name : department;
-            const cityCode = siigoAddressExist ? siigoAddress?.city.city_code : this.siigoService.buildCompleteCityCode(String(state_code), String(city_code));
-            const cityName = siigoAddressExist ? siigoAddress?.city.city_name : city;
+            // Build the invoice payload
+            const invoicePayload = this.buildInvoicePayload(orderData, items, siigoAddressExist, siigoAddress);
 
-            const baseJson = {
-                document: { id: 4361 },
-                date: new Date().toISOString().split('T')[0],
-                customer: {
-                    person_type: "Person",
-                    id_type: "13",
-                    identification: numberDocument.replace(/[.\s]/g, ''),
-                    branch_office: 0,
-                    name: [name, lastName],
-                    address: {
-                        address: address,
-                        city: {
-                            country_code: "Co",
-                            country_name: "Colombia",
-                            state_code: stateCode,
-                            state_name: stateName,
-                            city_code: cityCode,
-                            city_name: cityName
-                        },
-                        postal_code: "110911"
+            const json = JSON.stringify(invoicePayload);
+            Logger.info('Invoice payload prepared', {
+                itemCount: items.length,
+                totalValue: items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+            });
+
+            const siigoResponse = await this.siigoService.createInvoiceAsync(json);
+            Logger.success('Invoice created successfully', { orderId: idOrder });
+
+            return siigoResponse;
+        } catch (err: any) {
+            Logger.error('Error creating invoice', {
+                orderId: idOrder,
+                error: err.message || err
+            });
+            throw err;
+        }
+    }
+
+    private populateOrderData(results: OrderQueryResult[], orderData: any): void {
+        results.forEach((row) => {
+            orderData.orderList.push({
+                Reference: row.reference,
+                Quantity: row.quantity.toString()
+            });
+
+            // Only set values if they're not already set (first row wins)
+            if (!orderData.city) orderData.city = row.city;
+            if (!orderData.department) orderData.department = row.department;
+            if (!orderData.address) orderData.address = row.address;
+            if (!orderData.phone) orderData.phone = row.phone;
+            if (!orderData.mail) orderData.mail = row.email;
+            if (!orderData.name) orderData.name = row.firstName;
+            if (!orderData.lastName) orderData.lastName = row.lastName;
+            if (!orderData.state_code) orderData.state_code = row.state_code;
+            if (!orderData.city_code) orderData.city_code = row.city_code;
+            if (!orderData.numberDocument) orderData.numberDocument = row.documentNumber;
+        });
+    }
+
+    private validateOrderData(orderData: any): void {
+        const requiredFields = ['name', 'lastName', 'mail', 'numberDocument', 'address', 'phone'];
+        const missingFields = requiredFields.filter(field => !orderData[field]);
+
+        if (missingFields.length > 0) {
+            throw new Error(`Missing required customer data: ${missingFields.join(', ')}`);
+        }
+
+        if (orderData.orderList.length === 0) {
+            throw new Error('No products found in order');
+        }
+    }
+
+    private async processOrderItems(orderList: OrderDB[]): Promise<ProcessedItem[]> {
+        const processOrder = async (orderDb: OrderDB): Promise<ProcessedItem[]> => {
+            try {
+                Logger.info(`Processing product with reference: ${orderDb.Reference}`);
+
+                if (!orderDb.Reference) {
+                    Logger.error('Missing product reference');
+                    return [];
+                }
+
+                const productResult = await this.siigoService.findSiigoProductAsync(orderDb.Reference);
+                const quantity = orderDb.Quantity ? parseFloat(orderDb.Quantity) : 0;
+
+                if (quantity <= 0) {
+                    Logger.error(`Invalid quantity for product ${orderDb.Reference}: ${quantity}`);
+                    return [];
+                }
+
+                if (!productResult.results || productResult.results.length === 0) {
+                    Logger.error(`No product found for reference: ${orderDb.Reference}`);
+                    return [];
+                }
+
+                return productResult.results.map(p => {
+                    // Validate product structure
+                    if (!p.prices?.[0]?.price_list?.[0]?.value || !p.taxes?.[0]?.percentage) {
+                        Logger.error(`Invalid product data structure for ${orderDb.Reference}`);
+                        return null;
+                    }
+
+                    const basePrice = p.prices[0].price_list[0].value;
+                    const taxRate = p.taxes[0].percentage / 100;
+                    const priceWithoutTax = Math.round((basePrice / (1 + taxRate)) * 100) / 100;
+
+                    Logger.info(`Price calculation for ${p.code}`, {
+                        basePrice,
+                        taxRate: p.taxes[0].percentage,
+                        priceWithoutTax
+                    });
+
+                    return {
+                        code: p.code,
+                        quantity: quantity,
+                        price: priceWithoutTax,
+                        discount: 0,
+                    };
+                }).filter(item => item !== null) as ProcessedItem[];
+            } catch (error) {
+                Logger.error(`Error processing order ${orderDb.Reference}:`, error);
+                return [];
+            }
+        };
+
+        const itemGroups = await Promise.all(orderList.map(processOrder));
+        return itemGroups
+            .flat()
+            .filter(item => item.quantity > 0);
+    }
+
+    private buildInvoicePayload(orderData: any, items: ProcessedItem[], siigoAddressExist: boolean, siigoAddress: any): any {
+        const stateCode = siigoAddressExist
+            ? siigoAddress?.city.state_code
+            : String(orderData.state_code).padStart(2, '0');
+
+        const stateName = siigoAddressExist
+            ? siigoAddress?.city.state_name
+            : orderData.department;
+
+        const cityCode = siigoAddressExist
+            ? siigoAddress?.city.city_code
+            : this.siigoService.buildCompleteCityCode(String(orderData.state_code), String(orderData.city_code));
+
+        const cityName = siigoAddressExist
+            ? siigoAddress?.city.city_name
+            : orderData.city;
+
+        // Calculate total payment value correctly
+        const totalPaymentValue = items.reduce((sum, item) => {
+            return sum + Math.round(item.price * item.quantity * 100) / 100;
+        }, 0);
+
+        return {
+            document: { id: 27290 },
+            date: new Date().toISOString().split('T')[0],
+            customer: {
+                person_type: "Person",
+                id_type: "13",
+                identification: orderData.numberDocument.replace(/[.\s]/g, ''),
+                branch_office: 0,
+                name: [orderData.name, orderData.lastName],
+                address: {
+                    address: orderData.address,
+                    city: {
+                        country_code: "Co",
+                        country_name: "Colombia",
+                        state_code: stateCode,
+                        state_name: stateName,
+                        city_code: cityCode,
+                        city_name: cityName
                     },
-                    phones: [{
-                        indicative: "57",
-                        number: phone,
-                        extension: "132"
-                    }],
-                    contacts: [{
-                        first_name: name,
-                        last_name: lastName,
-                        email: mail,
-                        phone: {
-                            indicative: "57",
-                            number: phone,
-                            extension: "132"
-                        }
-                    }]
+                    postal_code: "110911"
                 },
-                seller: 894,
-                cost_center: 634,
-                stamp: { send: false },
-                mail: { send: false },
-                observations: "Producto comprado desde web",
-                items: items,
-                payments: items.map(item => ({
-                    id: 7236,
-                    value: Math.round(item.price * item.quantity )//* (item.percentage! + 1) * 100) / 100
-                }))
-            };
+                phones: [{
+                    indicative: "57",
+                    number: orderData.phone,
+                    extension: "132"
+                }],
+                contacts: [{
+                    first_name: orderData.name,
+                    last_name: orderData.lastName,
+                    email: orderData.mail,
+                    phone: {
+                        indicative: "57",
+                        number: orderData.phone,
+                        extension: "132"
+                    }
+                }]
+            },
+            seller: 894,
+            cost_center: 634,
+            stamp: { send: true },
+            mail: { send: false },
+            observations: "Abstenerse de realizar Retefuente. Empresa con beneficio de Renta Exenta otorgado por el Min. de Cultura, Res. 1568 del 22 de Octubre de 2021 \nAbstenerse de RETEICA.  Act. económica 9004  no gravada con el ICA, de conformidad la res. No. SHD-000265 del 13 de abril del 2021 en su artículo 2 Parágrafo 2.",
+            items: items,
+            payments: [{
+                id: 9625,
+                due_date: new Date().toISOString().split('T')[0],
+                value: Math.round(totalPaymentValue * 100) / 100
+            }]
+        };
+    }
 
-            const json = JSON.stringify(baseJson);
-            Logger.info('Invoice JSON generated', { baseJson });
+    private async sendSuccessEmail(response: string, orderId: string, transactionId: string): Promise<void> {
+        const emailBody = `Invoice created successfully for Order #${orderId}
 
-            //const siigoResponse = await this.siigoService.createInvoiceAsync(json);
-            //Logger.success('Siigo invoice created', { siigoResponse });
+Transaction Details:
+- Order ID: ${orderId}
+- Transaction ID: ${transactionId}
+- Timestamp: ${new Date().toISOString()}
 
-            return "hello";// siigoResponse;
+Siigo Response:
+${response}
+        `;
+
+        await this.sendEmailNotification(
+            "Invoice Created Successfully - GlobalPay Transaction",
+            emailBody
+        );
+    }
+
+    private async sendFailureEmail(payload: GlobalPayWebhook, reason: string): Promise<void> {
+        const emailBody = `Transaction failed: ${reason}
+
+Transaction Details:
+- Description: ${payload.query.x_description}
+- Amount: ${payload.query.x_amount}
+- Response: ${payload.query.x_respuesta}
+- Reason: ${payload.query.x_response_reason_text}
+- Timestamp: ${new Date().toISOString()}
+
+Full Payload:
+${JSON.stringify(payload, null, 2)}
+        `;
+
+        await this.sendEmailNotification(
+            "Transaction Failed - GlobalPay Webhook",
+            emailBody
+        );
+    }
+
+    private async sendErrorEmail(error: any, payload: GlobalPayWebhook): Promise<void> {
+        const emailBody = `Error processing GlobalPay webhook
+
+Error Details:
+- Message: ${error.message || 'Unknown error'}
+- Stack: ${error.stack || 'No stack trace available'}
+- Timestamp: ${new Date().toISOString()}
+
+Webhook Payload:
+${JSON.stringify(payload, null, 2)}
+        `;
+
+        await this.sendEmailNotification(
+            "Error Processing Webhook - GlobalPay",
+            emailBody
+        );
+    }
+
+    private async sendEmailNotification(subject: string, body: string): Promise<void> {
+        try {
+            const data = await this.mailgun.messages.create(this.fromDomain, {
+                from: this.fromEmail,
+                to: ["efpalaciosmo@unal.edu.co"],
+                subject: subject,
+                text: body,
+            });
+
+            Logger.success('Email notification sent successfully', {
+                subject,
+                messageId: data.id
+            });
         } catch (error) {
-            Logger.error('Error creating invoice', error);
+            Logger.error('Error sending email notification', {
+                subject,
+                error: error instanceof Error ? error.message : error
+            });
             throw error;
         }
     }

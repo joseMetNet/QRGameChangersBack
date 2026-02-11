@@ -104,9 +104,16 @@ export class SiigoDAL {
                 }
             });
 
+            console.log(`[INFO] Product search successful for reference: ${reference}`, {
+                status: response.status,
+                resultCount: (response.data as ProductResponse)?.results?.length || 0
+            });
+
             return response.data as ProductResponse;
         } catch (error) {
-            console.error(`Error fetching product for reference: ${reference}`, error);
+            console.error(`[ERROR] Failed to fetch product for reference: ${reference}`, {
+                error: error instanceof Error ? error.message : error
+            });
             throw new Error(`Failed to fetch product: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
@@ -152,10 +159,12 @@ export class SiigoDAL {
                 }
             });
 
+            console.log(`Invoice created successfully: ${response.data}`);
+
             return response.data as string;
-        } catch (error) {
-            console.error('Error creating invoice:', error);
-            throw new Error(`Failed to create invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } catch (err: any) {
+            console.error('Error creating invoice:', err.message);
+            throw new Error(`Failed to create invoice: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
     }
 

@@ -5,30 +5,31 @@ import { SiigoDAL } from "../controllers/siigo/SiigoNode/SiigoDAL";
 
 const siigoRouter = Router();
 
-// Initialize services
+// Initialize services with dependency injection
 const siigoService = new SiigoDAL();
 const webhookService = new GlobalPayWebhookService(siigoService);
 
 // Webhook endpoint for Siigo
 siigoRouter.post("/webhook", async (req, res) => {
     try {
-        const payload = req.body as GlobalPayWebhook;
+        // Create payload from query parameters
+        const payload: GlobalPayWebhook = {
+            query: req.query as any
+        };
 
-        if (!payload?.transaction || !payload?.user) {
-            console.warn('Payload inválido.');
-            res.status(400).json({ message: 'Payload inválido.' });
+        // Basic validation
+        if (!payload.query.x_description || !payload.query.x_respuesta) {
+            console.warn('Invalid payload - missing required fields.');
+            res.status(400).json({ message: 'Invalid payload - missing required fields.' });
             return;
         }
 
-        console.info(`Webhook válido recibido. Transacción ID: ${payload.transaction.id}, Estado: ${payload.transaction.status}`);
+        const response = await webhookService.processWebhook(payload);
 
-        // Process the webhook
-        await webhookService.processWebhook(payload);
-
-        res.status(200).send();
+        res.status(200).json({ message: response });
     } catch (error) {
         console.error('Error processing webhook:', error);
-        res.status(500).json({ message: 'Error interno del servidor.' });
+        res.status(500).json({ message: 'Internal server error.' });
     }
 });
 
