@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import db from '../database/connection';
-
+import Category from './categories';
 
 interface EventAttributes {
     idEvent: number;
@@ -10,6 +10,7 @@ interface EventAttributes {
     eventDate: Date;
     eventTime: string;
     idCity: number;
+    categoryId: number;
     organizer: string;
     eventImage: string;
     refundPolicy: string;
@@ -27,6 +28,7 @@ class Event extends Model<EventAttributes, EventCreationAttributes> implements E
     public eventDate!: Date;
     public eventTime!: string;
     public idCity!: number;
+    public categoryId!: number;
     public organizer!: string;
     public eventImage!: string;
     public refundPolicy!: string;
@@ -65,6 +67,10 @@ Event.init(
             type: DataTypes.INTEGER,
             allowNull: false
         },
+        categoryId: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        },
         organizer: {
             type: DataTypes.STRING(255),
             allowNull: false,
@@ -92,5 +98,6 @@ Event.init(
 
 
 
-
+Category.hasMany(Event, { foreignKey: 'categoryId' });
+Event.belongsTo(Category, { foreignKey: 'categoryId' });
 export default Event;

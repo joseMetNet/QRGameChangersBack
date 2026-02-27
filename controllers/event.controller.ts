@@ -3,6 +3,7 @@ import Event from '../models/event-model';
 import { BlobServiceClient } from "@azure/storage-blob";
 import multer from "multer";
 import City from '../models/city-model';
+import Category from '../models/categories'; 
 
 const upload = multer({
    storage: multer.memoryStorage(),
@@ -36,6 +37,7 @@ export const getEvents = async (req: Request, res: Response) => {
             'eventDate',
             'eventTime',
             'idCity',
+            'categoryId',
             'organizer',
             'eventImage',
             'refundPolicy'
@@ -44,6 +46,10 @@ export const getEvents = async (req: Request, res: Response) => {
             {
                model: City,
                attributes: ['idCity','City','idDepartment'] // 👈 nombre de la ciudad
+            },
+            {
+               model: Category, 
+               attributes: ['id', 'nombre'] // 👈 nombre de la categoría
             }
          ]
       });
@@ -82,6 +88,7 @@ export const getEventById = async (req: Request, res: Response) => {
             'eventDate',
             'eventTime',
             'idCity',
+            'categoryId',
             'organizer',
             'eventImage',
             'refundPolicy'
@@ -90,6 +97,10 @@ export const getEventById = async (req: Request, res: Response) => {
             {
                model: City,
                attributes: ['idCity','City','idDepartment'] // 👈 nombre de la ciudad
+            },
+            {
+               model: Category, 
+               attributes: ['id', 'nombre'] // 👈 nombre de la categoría
             }
          ]
       });
@@ -117,7 +128,7 @@ export const getEventById = async (req: Request, res: Response) => {
  */
 export const createEvent = async (req: Request, res: Response) => {
    try {
-      const { name, isActive, description, eventDate, eventTime, idCity, organizer, eventImage, refundPolicy } = req.body;
+      const { name, isActive, description, eventDate, eventTime, idCity,categoryId, organizer, eventImage, refundPolicy } = req.body;
 
       const newEvent = await Event.create({
          name,
@@ -126,6 +137,7 @@ export const createEvent = async (req: Request, res: Response) => {
          eventDate,
          eventTime,
          idCity,
+         categoryId,
          organizer,
          eventImage,
          refundPolicy,
@@ -149,7 +161,7 @@ export const createEvent = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
    try {
       const { idEvent } = req.params;
-      const { name, isActive, description, eventDate, eventTime,idCity, organizer, eventImage, refundPolicy } = req.body;
+      const { name, isActive, description, eventDate, eventTime,idCity,categoryId, organizer, eventImage, refundPolicy } = req.body;
 
       const event = await Event.findByPk(idEvent);
 
@@ -166,6 +178,7 @@ export const updateEvent = async (req: Request, res: Response) => {
          eventDate,
          eventTime,
          idCity,
+         categoryId,
          organizer,
          eventImage,
          refundPolicy,
