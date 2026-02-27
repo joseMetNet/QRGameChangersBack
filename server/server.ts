@@ -27,6 +27,7 @@
     import eventImageRouter from '../routes/eventImage.router';
     import wompiRouter from '../routes/wompi.router';
     import eventCoverRouter from '../routes/eventCover.router';
+    import categoryRouter from '../routes/category.router';
 
 
     class Server {
@@ -92,6 +93,7 @@
             this.app.use("/api", wompiRouter);
             this.app.use("/api", eventImageRouter);
             this.app.use("/api/event-cover", eventCoverRouter);
+            this.app.use("/api/categories", categoryRouter);
         }   
 
         listen() {
