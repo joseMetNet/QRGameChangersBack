@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-export const generateJWT = (uid: any = "", time: string = "15m") => {
+export const generateJWT = (uid: any = "") => {
   const secret: any = process.env.SECRET_KEY || 'gamechangers';
   return new Promise((resolve, reject) => {
     const payload = { uid };
@@ -8,7 +8,7 @@ export const generateJWT = (uid: any = "", time: string = "15m") => {
     // exp: Math.floor(Date.now() / 1000) + 60 * 60 
     // expiresIn: "15m"
 
-    jwt.sign(payload, secret, { expiresIn: time }, (err: any, token: any) => {
+    jwt.sign(payload, secret, { expiresIn: '1h' }, (err: any, token: any) => {
       if (err) {
         console.error('token: ', err);  
         reject("No se generó el Token");
