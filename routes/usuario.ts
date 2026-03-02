@@ -7,9 +7,9 @@ import { validateJwt } from "../middlewares/validate-jwt";
 
 const router = Router();
 
-router.get('/', getUsuarios);
-router.get('/:id', getUsuario);
-router.post('/',[
+router.get('/user', getUsuarios);
+router.get('/user/:id', getUsuario);
+router.post('/user',[
     check('name', 'El nombre es obligatorio').not().isEmpty(),
     check('last_name', 'El apellido es obligatorio').not().isEmpty(),
     check('addres','la dirección es obligatoria').not().isEmpty(),
@@ -26,8 +26,8 @@ router.post('/',[
 
     validateFields
 ], postUsuario);
-router.put('/:id', putUsuario);
-router.delete('/:id', [validateJwt], deleteUsuario);
+router.put('/user/:id', putUsuario);
+router.delete('/user/:id', [validateJwt], deleteUsuario);
 
 
 export default router;

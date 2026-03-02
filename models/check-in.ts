@@ -1,41 +1,35 @@
-import { DataTypes } from "sequelize";
-import db from "../database/connection";
+import { DataTypes } from 'sequelize';
+import db from '../database/connection';
 
-const Check_in = db.define('Check_in', {
-    id: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        primaryKey: true
-    },
-    id_product: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        primaryKey: true
-    },
-    id_user: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        primaryKey: true
-    },
-    check_in: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        primaryKey: true
-    },
-    date: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        primaryKey: true
-    },
+const CheckinModel = db.define(
+   'CheckIn',
+   {
+    //   id: {
+    //      type: DataTypes.INTEGER,
+    //      allowNull: false,
+    //      primaryKey: true
+    //   },
+      idProduct: {
+         type: DataTypes.INTEGER,
+         allowNull: false
+      },
+      idUser: {
+         type: DataTypes.INTEGER,
+         allowNull: false
+      },
+      checkIn: {
+         type: DataTypes.BOOLEAN,
+         allowNull: false
+      },
+      createdAt: {
+         type: DataTypes.DATE,
+         defaultValue: DataTypes.NOW
+      }
+   },
+   {
+      timestamps: false
+   }
+);
 
-    createdAt: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-    },
-    updatedAt: {
-        type: DataTypes.DATEONLY,
-        allowNull: false,
-    },
-});
-
-export default Check_in;
+export default CheckinModel;
+// export default Check_in;
